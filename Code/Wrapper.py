@@ -35,34 +35,41 @@ def connect_to_blender(host, port, retry_limit=10):
             break
 
 def main(args):
+    if isinstance(args.headless, str): args.headless = args.headless == "True"
     image_gen = get_images_from_scene(args)
     os.makedirs("./Output", exist_ok=True)
-    cmd = [os.path.expanduser("~")+args.blender_path, args.base_blender_scene, "-P", "Code/blender_socket2.py"]
+    asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))
+    cmd = [os.path.expanduser("~")+args.blender_path, 
+           args.base_blender_scene, "-P", 
+           "Code/blender_py.py", "--",  asset_path]
+    if args.headless: cmd.insert(1, '-b')
     process = subprocess.Popen(cmd)
     
-    # time.sleep(5)
     s = connect_to_blender('127.0.0.1', 65432, 10)
+    time.sleep(3)
     s.sendall(CLEAR.encode('utf-8'))
-    for frame_i, frame in enumerate(image_gen):
-        # print(frame_i)
-        cv2.imshow('frame', frame)
-        cv2.waitKey(1)
+    time.sleep(1)
+    # for frame_i, frame in enumerate(image_gen):
+    #     # print(frame_i)
+    #     cv2.imshow('frame', frame)
+    #     cv2.waitKey(1)
         # do detections
 
         # save to json
         # run blender to render scene from json
-        # s.sendall("json\n".encode('utf-8'))
-        
-    s.sendall(CLOSE.encode('utf-8'))
+    s.sendall("spawn SUV\n".encode('utf-8'))
+    time.sleep(2)
+    # s.sendall(CLOSE.encode('utf-8'))
     return
 
 def configParser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path',default="./P3Data/Sequences",help="dataset path")
+    parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
     parser.add_argument('--sequence',default='scene2', help="Select which sequence to generate visuals for")
     parser.add_argument('--stride', default=4, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
-    parser.add_argument('--base_blender_scene', default="./Blender/test.blend")
+    parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
+    parser.add_argument('--headless', default=False)
     return parser
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ from glob import glob
 
 # Generator function to save memory
 def get_images_from_scene(args):
-    undist_videos_path = os.path.abspath(os.path.join(args.data_path, args.sequence, "Undist"))
+    undist_videos_path = os.path.abspath(os.path.join(args.data_path+'Sequences/', args.sequence, "Undist"))
     
     front_vid_path = glob(undist_videos_path+"/*front*")[0]
 

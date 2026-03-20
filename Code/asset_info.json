@@ -1,0 +1,140 @@
+{
+    "protected_assets": ["Camera", "Light", "Ego_Car", "Empty", "Plane", "Sun"],
+    
+    "Dustbin":{
+        "models": {
+            "Bin_Mesh.072":{
+                "scale": 1.0
+            },
+            "Lid_Mesh.051":{
+                "scale": 1.0
+            },
+            "Wheels_Mesh.089":{
+                "scale": 1.0
+            }
+        }
+    },
+
+    "Pedestrain":{
+        "models":{
+            "BaseMesh_Man_Simple":{
+                "scale": 1.0
+            }
+        }
+    }, 
+
+    "SpeedLimitSign":{
+        "models":{
+            "sign_25mph_sign_25mph":{
+                "scale": 1.0
+            }
+        }
+    }, 
+
+    "StopSign":{
+        "models":{
+            "StopSign_Geo":{
+                "scale": 1.0
+            }
+        }
+    }, 
+
+    "TrafficAssets":{
+        "models":{
+            "Circle":{
+                "scale": 1.0
+            },
+            "Circle.001":{
+                "scale": 1.0
+            },
+            "Circle.002":{
+                "scale": 1.0
+            },
+            "Circle.003":{
+                "scale": 1.0
+            },
+            "Cylinder":{
+                "scale": 1.0
+            },
+            "Cylinder.001":{
+                "scale": 1.0
+            },
+            "Plane":{
+                "scale": 1.0
+            },
+            "Plane.001":{
+                "scale": 1.0
+            },
+            "Text":{
+                "scale": 1.0
+            },
+            "Text.001":{
+                "scale": 1.0
+            }
+        }
+    }, 
+
+    "TrafficConeAndCylinder":{
+        "models":{
+            "absperrhut":{
+                "scale": 1.0
+            }
+        }
+    }, 
+
+    "TrafficSignal":{
+        "models":{
+            "Traffic_signal1":{
+                "scale": 1.0
+            }
+        }
+    },
+    
+    "Bicycle":{
+        "models":{
+            "roadbike 2.0.1":{
+                "scale": 1.0
+            }
+        }
+    }, 
+
+    "Motorcycle":{
+        "models":{
+            "B_Wheel":{
+                "scale": 1.0
+            }
+        }
+    }, 
+
+    "PickupTruck":{
+        "models":{
+            "PickupTruck":{
+                "scale": 1.0
+            }
+        }
+    }, 
+
+    "SedanAndHatchback":{
+        "models":{
+            "Car":{
+                "scale": 1.0
+            }
+        }
+    }, 
+
+    "SUV":{
+        "models":{
+            "Jeep_3_":{
+                "scale": 1.0
+            }
+        }
+    }, 
+
+    "Truck":{
+        "models":{
+            "Truck":{
+                "scale": 1.0
+            }
+        }
+    }
+}
