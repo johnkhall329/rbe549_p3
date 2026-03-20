@@ -26,9 +26,20 @@ def handle_command(cmd):
         os._exit(0)
     elif 'clear' in cmd:
         blenderpy_utils.clear_scene(asset_info["protected_assets"])
+    elif 'load_new' in cmd:
+        json_file = cmd.split('load_new')[-1].strip()
+        with open(json_file, 'r') as f:
+            new_scene = json.load(f)
+            for asset_name, asset_instances in new_scene.items():
+                for asset_info in asset_instances:
+                    print(asset_info)
+                    loc = asset_info.get("location", [0.0,0.0,0.0])
+                    rot = asset_info.get("rotation", [0.0,0.0,0.0])
+                    scale = asset_info.get("scale", (1.0,1.0,1.0))
+                    blenderpy_utils.create_instance(asset_name, loc, rot, scale, blender_assets, blender_collections)
     elif 'spawn' in cmd: # Simple example: "spawn Sedan_Model 1,2,0"
         spawned_asset = cmd.split('spawn')[-1].strip()
-        blenderpy_utils.create_instance(spawned_asset, blender_assets)
+        blenderpy_utils.create_instance(spawned_asset, (0,0,0), (0,0,0), (1.0,1.0,1.0), blender_assets, blender_collections)
     else:
         print(f"Generic command: {cmd}")
 
@@ -39,7 +50,7 @@ def socket_tick():
 # --- STARTUP ---
 if "--" in sys.argv:
     asset_path = sys.argv[sys.argv.index("--") + 1]
-    blender_assets = blenderpy_utils.preload_assets(asset_path, asset_info)
+    blender_assets, blender_collections = blenderpy_utils.preload_assets(asset_path, asset_info)
 
 if bpy.app.background:
     print("Headless mode detected. Entering main loop...")

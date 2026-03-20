@@ -47,8 +47,8 @@ def main(args):
     
     s = connect_to_blender('127.0.0.1', 65432, 10)
     time.sleep(3)
-    s.sendall(CLEAR.encode('utf-8'))
-    time.sleep(1)
+    # s.sendall(CLEAR.encode('utf-8'))
+    # time.sleep(1)
     # for frame_i, frame in enumerate(image_gen):
     #     # print(frame_i)
     #     cv2.imshow('frame', frame)
@@ -57,8 +57,10 @@ def main(args):
 
         # save to json
         # run blender to render scene from json
-    s.sendall("spawn SUV\n".encode('utf-8'))
-    time.sleep(2)
+    s.sendall("load_new ./Code/test_scene.json\n".encode('utf-8'))
+    # s.sendall("spawn SUV\n".encode('utf-8'))
+    # time.sleep(2)
+    # s.sendall("spawn Trashbin\n".encode('utf-8'))
     # s.sendall(CLOSE.encode('utf-8'))
     return
 

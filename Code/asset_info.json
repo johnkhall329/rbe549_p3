@@ -1,8 +1,8 @@
 {
     "protected_assets": ["Camera", "Light", "Ego_Car", "Empty", "Plane", "Sun"],
-    
+
     "Dustbin":{
-        "models": {
+        "Object": {
             "Bin_Mesh.072":{
                 "scale": 1.0
             },
@@ -15,125 +15,157 @@
         }
     },
 
+    "Trashbin":{
+        "Collection":{
+            "trashbin":{
+                "scale":1.0,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,0.0]
+            }
+        }
+    },
+
     "Pedestrain":{
-        "models":{
+        "Object":{
             "BaseMesh_Man_Simple":{
-                "scale": 1.0
+                "scale": 1.0,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,0.0]
             }
         }
     }, 
 
     "SpeedLimitSign":{
-        "models":{
+        "Object":{
             "sign_25mph_sign_25mph":{
-                "scale": 1.0
+                "scale": 1.0,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,0.0]
             }
         }
     }, 
 
     "StopSign":{
-        "models":{
+        "Object":{
             "StopSign_Geo":{
-                "scale": 1.0
+                "scale": 1.0,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,0.0]
             }
         }
     }, 
 
     "TrafficAssets":{
-        "models":{
-            "Circle":{
-                "scale": 1.0
+        "Collection":{
+            "barrel":{
+                "scale": 1.0,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,0.0]
             },
-            "Circle.001":{
-                "scale": 1.0
+            "cone":{
+                "scale": 1.0,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,0.0]
             },
-            "Circle.002":{
-                "scale": 1.0
+            "fire":{
+                "scale": 1.0,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,0.0]
             },
-            "Circle.003":{
-                "scale": 1.0
+            "iron pole":{
+                "scale": 1.0,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,0.0]
             },
-            "Cylinder":{
-                "scale": 1.0
+            "no parking":{
+                "scale": 1.0,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,0.0]
             },
-            "Cylinder.001":{
-                "scale": 1.0
-            },
-            "Plane":{
-                "scale": 1.0
-            },
-            "Plane.001":{
-                "scale": 1.0
-            },
-            "Text":{
-                "scale": 1.0
-            },
-            "Text.001":{
-                "scale": 1.0
+            "trash can":{
+                "scale": 1.0,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,0.0]
             }
         }
-    }, 
+    },
 
     "TrafficConeAndCylinder":{
-        "models":{
+        "Object":{
             "absperrhut":{
-                "scale": 1.0
+                "scale": 1.0,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,0.0]
             }
         }
     }, 
 
     "TrafficSignal":{
-        "models":{
+        "Object":{
             "Traffic_signal1":{
-                "scale": 1.0
+                "scale": 1.0,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,0.0]
             }
         }
     },
     
     "Bicycle":{
-        "models":{
+        "Object":{
             "roadbike 2.0.1":{
-                "scale": 1.0
+                "scale": 1.0,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,0.0]
             }
         }
     }, 
 
     "Motorcycle":{
-        "models":{
+        "Object":{
             "B_Wheel":{
-                "scale": 1.0
+                "scale": 1.0,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,0.0]
             }
         }
     }, 
 
     "PickupTruck":{
-        "models":{
+        "Object":{
             "PickupTruck":{
-                "scale": 1.0
+                "scale": 1.0,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,0.0]
             }
         }
     }, 
 
     "SedanAndHatchback":{
-        "models":{
+        "Object":{
             "Car":{
-                "scale": 1.0
+                "scale": 1.0,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,0.0]
             }
         }
     }, 
 
     "SUV":{
-        "models":{
+        "Object":{
             "Jeep_3_":{
-                "scale": 1.0
+                "scale": 3.5,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,-90.0]
             }
         }
     }, 
 
     "Truck":{
-        "models":{
+        "Object":{
             "Truck":{
-                "scale": 1.0
+                "scale": 1.0,
+                "offset":[0.0,0.0,0.0],
+                "rotation":[0.0,0.0,0.0]
             }
         }
     }
