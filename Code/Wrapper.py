@@ -5,8 +5,11 @@ import argparse
 import cv2
 import socket
 import time
+import matplotlib.pyplot as plt
+
 
 from parse_video import *
+from depth_predictor import DepthPredictor
 
 CLEAR = "clear\n"
 CLOSE = "close\n"
@@ -37,30 +40,36 @@ def connect_to_blender(host, port, retry_limit=10):
 def main(args):
     if isinstance(args.headless, str): args.headless = args.headless == "True"
     image_gen = get_images_from_scene(args)
-    os.makedirs("./Output", exist_ok=True)
-    asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))
-    cmd = [os.path.expanduser("~")+args.blender_path, 
-           args.base_blender_scene, "-P", 
-           "Code/blender_py.py", "--",  asset_path]
-    if args.headless: cmd.insert(1, '-b')
-    process = subprocess.Popen(cmd)
+
+    depth_predictor = DepthPredictor("MiDaS_small")
+    # os.makedirs("./Output", exist_ok=True)
+    # asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))
+    # cmd = [os.path.expanduser("~")+args.blender_path, 
+    #        args.base_blender_scene, "-P", 
+    #        "Code/blender_py.py", "--",  asset_path]
+    # if args.headless: cmd.insert(1, '-b')
+    # process = subprocess.Popen(cmd)
     
-    s = connect_to_blender('127.0.0.1', 65432, 10)
-    time.sleep(3)
-    # s.sendall(CLEAR.encode('utf-8'))
-    # time.sleep(1)
-    # for frame_i, frame in enumerate(image_gen):
-    #     # print(frame_i)
-    #     cv2.imshow('frame', frame)
-    #     cv2.waitKey(1)
+    # s = connect_to_blender('127.0.0.1', 65432, 10)
+    # time.sleep(3)
+    # # s.sendall(CLEAR.encode('utf-8'))
+    # # time.sleep(1)
+    for frame_i, frame in enumerate(image_gen):
+        depth_im = depth_predictor.predict(frame)
+
+        plt.imsave(f'Output/output{frame_i}.jpg', depth_im)
+        plt.imsave(f'Output/output{frame_i}_original.jpg', frame)
+
+        cv2.imshow('frame', depth_im)
+        cv2.waitKey(1)
         # do detections
 
-        # save to json
-        # run blender to render scene from json
-    s.sendall("load_new ./Code/test_scene.json\n".encode('utf-8'))
-    time.sleep(2)
-    s.sendall(f"render ./Output/{args.sequence}\n".encode('utf-8'))
-    time.sleep(1)
+    #     # save to json
+    #     # run blender to render scene from json
+    # s.sendall("load_new ./Code/test_scene.json\n".encode('utf-8'))
+    # time.sleep(2)
+    # s.sendall(f"render ./Output/{args.sequence}\n".encode('utf-8'))
+    # time.sleep(1)
     # s.sendall("spawn SUV\n".encode('utf-8'))
     # time.sleep(2)
     # s.sendall("spawn Trashbin\n".encode('utf-8'))
@@ -69,9 +78,9 @@ def main(args):
 
 def configParser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
+    parser.add_argument('--data_path',default="../P3Data/",help="dataset path")
     parser.add_argument('--sequence',default='scene2', help="Select which sequence to generate visuals for")
-    parser.add_argument('--stride', default=4, help="How many frames to skip in video")
+    parser.add_argument('--stride', default=10, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
     parser.add_argument('--headless', default=False)
