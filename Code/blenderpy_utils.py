@@ -3,6 +3,8 @@ import os
 from glob import glob
 import math
 
+bpy.context.scene.render.engine = 'BLENDER_EEVEE'
+
 def clear_scene(protected_assests):
     for obj in bpy.data.objects:
         if obj.name in protected_assests:
@@ -109,3 +111,29 @@ def create_instance(asset_name, location, rotation, blender_assets, blender_coll
         # return new_inst
     else:
         print(f'{asset_name} not found')
+
+def render_scene(output_path):
+    """
+    Renders the current scene and saves it as a PNG.
+    """
+    scene = bpy.context.scene
+    
+    # 1. Set File Format to PNG
+    scene.render.image_settings.file_format = 'PNG'
+    scene.render.image_settings.color_mode = 'RGBA' # Use 'RGB' if no transparency is needed
+    
+    # 2. Set Output Path
+    # Blender automatically adds .png to the end if not provided
+    # full_path = os.path.join(output_path, filename)
+    scene.render.filepath = output_path
+    
+    # 3. Optional: Set Resolution (e.g., 1080p)
+    scene.render.resolution_x = 1920
+    scene.render.resolution_y = 1080
+    scene.render.resolution_percentage = 100
+    
+    # 4. Trigger the Render
+    # write_still=True tells Blender to actually save the file to disk
+    print(f"Rendering to: {output_path}...")
+    bpy.ops.render.render(write_still=True)
+    print("Render Complete.")

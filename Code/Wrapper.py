@@ -58,6 +58,9 @@ def main(args):
         # save to json
         # run blender to render scene from json
     s.sendall("load_new ./Code/test_scene.json\n".encode('utf-8'))
+    time.sleep(2)
+    s.sendall(f"render ./Output/{args.sequence}\n".encode('utf-8'))
+    time.sleep(1)
     # s.sendall("spawn SUV\n".encode('utf-8'))
     # time.sleep(2)
     # s.sendall("spawn Trashbin\n".encode('utf-8'))

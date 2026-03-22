@@ -1,36 +1,36 @@
 {
     "trashbin":[{
-        "location": [0.0,0.0,0.0],
+        "location": [0.0,2.0,0.0],
         "rotation": [0.0, 0.0, 90.0]
     }],
 
     "barrel":[{
-        "location": [0.0,0.0,0.0], 
+        "location": [0.0,5.0,0.0], 
         "rotation": [0.0,0.0,0.0]
     }],
 
     "cone":[{
-        "location": [0.0,0.0,0.0],
+        "location": [4.0,0.0,0.0],
         "rotation": [0.0,0.0,0.0]
     }],
 
     "fire":[{
-        "location": [0.0,0.0,0.0], 
+        "location": [5.0,0.0,0.0], 
         "rotation": [0.0,0.0,0.0]
     }],
 
     "iron pole":[{
-        "location": [0.0,0.0,0.0], 
+        "location": [-2.0,0.0,0.0], 
         "rotation": [0.0,0.0,0.0]
     }],
 
     "no parking":[{
-        "location": [0.0,0.0,0.0],
+        "location": [-2.0,-2.0,0.0],
         "rotation": [0.0,0.0,0.0]
     }],
 
     "trash can":[{
-        "location": [0.0,0.0,0.0],
+        "location": [1.0,4.0,0.0],
         "rotation": [0.0,0.0,0.0]
     }]
 }

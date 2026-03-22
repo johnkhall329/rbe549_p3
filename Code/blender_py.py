@@ -17,6 +17,7 @@ HOST, PORT = '127.0.0.1', 65432
 active_connections = []
 server_sock = socket_manager.setup_server(HOST, PORT)
 
+
 with open('./Code/asset_info.json', 'r') as f:
     asset_info = json.load(f)
 
@@ -28,7 +29,6 @@ def handle_command(cmd):
         blenderpy_utils.clear_scene(asset_info["protected_assets"])
     elif 'load_new' in cmd:
         json_file = cmd.split('load_new')[-1].strip()
-        print(blender_collections)
         with open(json_file, 'r') as f:
             new_scene = json.load(f)
             for asset_name, asset_instances in new_scene.items():
@@ -39,6 +39,9 @@ def handle_command(cmd):
     elif 'spawn' in cmd: # Simple example: "spawn Sedan_Model 1,2,0"
         spawned_asset = cmd.split('spawn')[-1].strip()
         blenderpy_utils.create_instance(spawned_asset, (0,0,0), (0,0,0), blender_assets, blender_collections)
+    elif 'render' in cmd:
+        img_name = cmd.split('render')[-1].strip()
+        blenderpy_utils.render_scene(img_name)
     else:
         print(f"Generic command: {cmd}")
 
