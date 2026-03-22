@@ -18,7 +18,7 @@
     "Trashbin":{
         "Collection":{
             "trashbin":{
-                "scale":1.0,
+                "scale":1.75,
                 "offset":[0.0,0.0,0.0],
                 "rotation":[0.0,0.0,0.0]
             }
@@ -28,9 +28,9 @@
     "Pedestrain":{
         "Object":{
             "BaseMesh_Man_Simple":{
-                "scale": 1.0,
+                "scale": 0.01,
                 "offset":[0.0,0.0,0.0],
-                "rotation":[0.0,0.0,0.0]
+                "rotation":[90.0,0.0,-90.0]
             }
         }
     }, 
@@ -38,9 +38,9 @@
     "SpeedLimitSign":{
         "Object":{
             "sign_25mph_sign_25mph":{
-                "scale": 1.0,
+                "scale": 0.75,
                 "offset":[0.0,0.0,0.0],
-                "rotation":[0.0,0.0,0.0]
+                "rotation":[0.0,0.0,-90.0]
             }
         }
     }, 
@@ -48,9 +48,9 @@
     "StopSign":{
         "Object":{
             "StopSign_Geo":{
-                "scale": 1.0,
+                "scale": 0.35,
                 "offset":[0.0,0.0,0.0],
-                "rotation":[0.0,0.0,0.0]
+                "rotation":[90.0,0.0,180.0]
             }
         }
     }, 
@@ -58,33 +58,33 @@
     "TrafficAssets":{
         "Collection":{
             "barrel":{
-                "scale": 1.0,
-                "offset":[0.0,0.0,0.0],
+                "scale": 0.35,
+                "offset":[0.0,-18.845,0.0],
                 "rotation":[0.0,0.0,0.0]
             },
             "cone":{
-                "scale": 1.0,
-                "offset":[0.0,0.0,0.0],
+                "scale": 0.25,
+                "offset":[0.0,-16.769,0.0],
                 "rotation":[0.0,0.0,0.0]
             },
             "fire":{
-                "scale": 1.0,
-                "offset":[0.0,0.0,0.0],
+                "scale": 0.25,
+                "offset":[0.0,-9.6232,0.0],
                 "rotation":[0.0,0.0,0.0]
             },
             "iron pole":{
-                "scale": 1.0,
-                "offset":[0.0,0.0,0.0],
+                "scale": 0.432,
+                "offset":[0.0,-7.8862,0.0],
                 "rotation":[0.0,0.0,0.0]
             },
             "no parking":{
-                "scale": 1.0,
-                "offset":[0.0,0.0,0.0],
+                "scale": [0.1,0.306,0.306],
+                "offset":[0.0,-12.294,0.0],
                 "rotation":[0.0,0.0,0.0]
             },
             "trash can":{
-                "scale": 1.0,
-                "offset":[0.0,0.0,0.0],
+                "scale": 0.2,
+                "offset":[0.0,-14.637,0.0],
                 "rotation":[0.0,0.0,0.0]
             }
         }
@@ -95,7 +95,7 @@
             "absperrhut":{
                 "scale": 1.0,
                 "offset":[0.0,0.0,0.0],
-                "rotation":[0.0,0.0,0.0]
+                "rotation":[90.0,0.0,0.0]
             }
         }
     }, 
@@ -103,9 +103,9 @@
     "TrafficSignal":{
         "Object":{
             "Traffic_signal1":{
-                "scale": 1.0,
-                "offset":[0.0,0.0,0.0],
-                "rotation":[0.0,0.0,0.0]
+                "scale": 0.25,
+                "offset":[0.0,0.0,5.0],
+                "rotation":[90.0,0.0,180.0]
             }
         }
     },
@@ -113,9 +113,9 @@
     "Bicycle":{
         "Object":{
             "roadbike 2.0.1":{
-                "scale": 1.0,
-                "offset":[0.0,0.0,0.0],
-                "rotation":[0.0,0.0,0.0]
+                "scale": 0.125,
+                "offset":[-0.54,-0.54,0.25],
+                "rotation":[90.0,0.0,-90.0]
             }
         }
     }, 
@@ -123,9 +123,9 @@
     "Motorcycle":{
         "Object":{
             "B_Wheel":{
-                "scale": 1.0,
+                "scale": 0.005,
                 "offset":[0.0,0.0,0.0],
-                "rotation":[0.0,0.0,0.0]
+                "rotation":[90.0,0.0,0.0]
             }
         }
     }, 
@@ -133,9 +133,9 @@
     "PickupTruck":{
         "Object":{
             "PickupTruck":{
-                "scale": 1.0,
-                "offset":[0.0,0.0,0.0],
-                "rotation":[0.0,0.0,0.0]
+                "scale": 0.6,
+                "offset":[0.0,0.0,0.87],
+                "rotation":[90.0,0.0,180.0]
             }
         }
     }, 
@@ -143,9 +143,9 @@
     "SedanAndHatchback":{
         "Object":{
             "Car":{
-                "scale": 1.0,
-                "offset":[0.0,0.0,0.0],
-                "rotation":[0.0,0.0,0.0]
+                "scale": 0.02,
+                "offset":[0.0,0.0,0.02],
+                "rotation":[0.0,0.0,90.0]
             }
         }
     }, 
@@ -163,9 +163,9 @@
     "Truck":{
         "Object":{
             "Truck":{
-                "scale": 1.0,
+                "scale": 0.000964,
                 "offset":[0.0,0.0,0.0],
-                "rotation":[0.0,0.0,0.0]
+                "rotation":[0.0,0.0,-90.0]
             }
         }
     }
