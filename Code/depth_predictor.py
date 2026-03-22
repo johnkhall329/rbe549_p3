@@ -1,6 +1,5 @@
 import cv2
 import torch
-import urllib.request
 
 import matplotlib.pyplot as plt
 

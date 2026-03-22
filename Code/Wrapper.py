@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 
 from parse_video import *
 from depth_predictor import DepthPredictor
+from object_detector import ObjectDetector
 
 CLEAR = "clear\n"
 CLOSE = "close\n"
@@ -42,44 +43,50 @@ def main(args):
     image_gen = get_images_from_scene(args)
 
     depth_predictor = DepthPredictor("MiDaS_small")
-    # os.makedirs("./Output", exist_ok=True)
-    # asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))
-    # cmd = [os.path.expanduser("~")+args.blender_path, 
-    #        args.base_blender_scene, "-P", 
-    #        "Code/blender_py.py", "--",  asset_path]
-    # if args.headless: cmd.insert(1, '-b')
-    # process = subprocess.Popen(cmd)
+
+    object_detector = ObjectDetector()
+    os.makedirs("./Output", exist_ok=True)
+    asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))
+    cmd = [os.path.expanduser("~")+args.blender_path, 
+           args.base_blender_scene, "-P", 
+           "Code/blender_py.py", "--",  asset_path]
+    if args.headless: cmd.insert(1, '-b')
+    process = subprocess.Popen(cmd)
     
-    # s = connect_to_blender('127.0.0.1', 65432, 10)
-    # time.sleep(3)
-    # # s.sendall(CLEAR.encode('utf-8'))
-    # # time.sleep(1)
+    s = connect_to_blender('127.0.0.1', 65432, 10)
+    time.sleep(3)
+    # s.sendall(CLEAR.encode('utf-8'))
+    # time.sleep(1)
     for frame_i, frame in enumerate(image_gen):
+        bounded_im = object_detector.gen_bounded_image(frame)
+        object_result = object_detector.predict(frame)
         depth_im = depth_predictor.predict(frame)
 
-        plt.imsave(f'Output/output{frame_i}.jpg', depth_im)
-        plt.imsave(f'Output/output{frame_i}_original.jpg', frame)
+        save_results_to_json(object_result, depth_im)
 
-        cv2.imshow('frame', depth_im)
-        cv2.waitKey(1)
+        plt.imsave(f'Output/output{frame_i}_bounded.jpg', bounded_im)
+        plt.imsave(f'Output/output{frame_i}_depth.jpg', depth_im)
+
+        # cv2.imshow('frame', frame)
+        # cv2.waitKey(1)
         # do detections
 
-    #     # save to json
-    #     # run blender to render scene from json
-    # s.sendall("load_new ./Code/test_scene.json\n".encode('utf-8'))
-    # time.sleep(2)
-    # s.sendall(f"render ./Output/{args.sequence}\n".encode('utf-8'))
-    # time.sleep(1)
-    # s.sendall("spawn SUV\n".encode('utf-8'))
-    # time.sleep(2)
-    # s.sendall("spawn Trashbin\n".encode('utf-8'))
-    # s.sendall(CLOSE.encode('utf-8'))
+        # save to json
+        # run blender to render scene from json
+        s.sendall("load_new ./Code/temp_scene.json\n".encode('utf-8'))
+        time.sleep(2)
+        s.sendall(f"render ./Output/{args.sequence}\n".encode('utf-8'))
+        time.sleep(1)
+        s.sendall("spawn SUV\n".encode('utf-8'))
+        time.sleep(2)
+        # s.sendall("spawn Trashbin\n".encode('utf-8'))
+    s.sendall(CLOSE.encode('utf-8'))
     return
 
 def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="../P3Data/",help="dataset path")
-    parser.add_argument('--sequence',default='scene2', help="Select which sequence to generate visuals for")
+    parser.add_argument('--sequence',default='scene5', help="Select which sequence to generate visuals for")
     parser.add_argument('--stride', default=10, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
