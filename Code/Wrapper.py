@@ -55,7 +55,6 @@ def main(args):
     
     s = connect_to_blender('127.0.0.1', 65432, 10)
     time.sleep(3)
-    # s.sendall(CLEAR.encode('utf-8'))
     # time.sleep(1)
     for frame_i, frame in enumerate(image_gen):
         bounded_im = object_detector.gen_bounded_image(frame)
@@ -72,13 +71,15 @@ def main(args):
         # do detections
 
         # save to json
-        # run blender to render scene from json
+        # run blender to render scene from json        
+        s.sendall(CLEAR.encode('utf-8'))
+        time.sleep(1)
         s.sendall("load_new ./Code/temp_scene.json\n".encode('utf-8'))
-        time.sleep(2)
+        time.sleep(1)
         s.sendall(f"render ./Output/{args.sequence}\n".encode('utf-8'))
         time.sleep(1)
-        s.sendall("spawn SUV\n".encode('utf-8'))
-        time.sleep(2)
+        # s.sendall("spawn SUV\n".encode('utf-8'))
+        # time.sleep(2)
         # s.sendall("spawn Trashbin\n".encode('utf-8'))
     s.sendall(CLOSE.encode('utf-8'))
     return
@@ -87,7 +88,7 @@ def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="../P3Data/",help="dataset path")
     parser.add_argument('--sequence',default='scene5', help="Select which sequence to generate visuals for")
-    parser.add_argument('--stride', default=10, help="How many frames to skip in video")
+    parser.add_argument('--stride', default=30, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
     parser.add_argument('--headless', default=False)

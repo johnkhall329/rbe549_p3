@@ -59,7 +59,7 @@ def save_results_to_json(object_detection_results, depth_results):
         }
 
         if label == 'car':
-            label = 'SedanAndHatchback/Car'
+            label = 'SedanAndHatchback'
         if label not in scene_objects:
             scene_objects[label] = []
 
