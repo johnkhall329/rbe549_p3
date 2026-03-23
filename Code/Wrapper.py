@@ -11,9 +11,19 @@ from parse_video import *
 CLEAR = "clear\n"
 CLOSE = "close\n"
 
-def connect_to_blender(host, port, retry_limit=10):
+def connect_to_blender(asset_path, args, host, port, retry_limit=10):
     attempt=0
+    cmd = [os.path.expanduser("~")+args.blender_path, 
+           args.base_blender_scene, "-P", 
+           "Code/blender_py.py", "--",  asset_path]
+    if args.headless: cmd.insert(1, '-b')
+    # process = subprocess.Popen(cmd)
+
+    exists = False
+    
     while True:
+        if attempt > retry_limit:
+            raise Exception("Unable to Connect to Blender")
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # s.settimeout(3.0)
 
@@ -25,8 +35,15 @@ def connect_to_blender(host, port, retry_limit=10):
             
         except (socket.timeout, ConnectionRefusedError):
             attempt += 1
-            print("Blender not reached. Retrying in 0.5 seconds...")
-            s.close()
+            if not exists:
+                process = subprocess.Popen(cmd)
+                print("Initializing Blender Socket")
+                exists = True
+                s.close()
+                time.sleep(0.5)
+            else:
+                print("Blender not reached. Retrying in 0.5 seconds...")
+                s.close()
             time.sleep(0.5)  # Wait a bit before the next 3-second attempt
             
         except Exception as e:
@@ -39,16 +56,16 @@ def main(args):
     image_gen = get_images_from_scene(args)
     os.makedirs("./Output", exist_ok=True)
     asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))
-    cmd = [os.path.expanduser("~")+args.blender_path, 
-           args.base_blender_scene, "-P", 
-           "Code/blender_py.py", "--",  asset_path]
-    if args.headless: cmd.insert(1, '-b')
-    process = subprocess.Popen(cmd)
+    # cmd = [os.path.expanduser("~")+args.blender_path, 
+    #        args.base_blender_scene, "-P", 
+    #        "Code/blender_py.py", "--",  asset_path]
+    # if args.headless: cmd.insert(1, '-b')
+    # process = subprocess.Popen(cmd)
     
-    s = connect_to_blender('127.0.0.1', 65432, 10)
-    time.sleep(3)
-    # s.sendall(CLEAR.encode('utf-8'))
-    # time.sleep(1)
+    s = connect_to_blender(asset_path, args, '127.0.0.1', 65432, 10)
+    time.sleep(1)
+    s.sendall(CLEAR.encode('utf-8'))
+    # time.sleep(2)
     # for frame_i, frame in enumerate(image_gen):
     #     # print(frame_i)
     #     cv2.imshow('frame', frame)
@@ -58,9 +75,11 @@ def main(args):
         # save to json
         # run blender to render scene from json
     s.sendall("load_new ./Code/test_scene.json\n".encode('utf-8'))
-    time.sleep(2)
+    time.sleep(1)
     s.sendall(f"render ./Output/{args.sequence}\n".encode('utf-8'))
     time.sleep(1)
+    # time.sleep(5)
+    # s.sendall("load_new ./Code/test_scene.json\n".encode('utf-8'))
     # s.sendall("spawn SUV\n".encode('utf-8'))
     # time.sleep(2)
     # s.sendall("spawn Trashbin\n".encode('utf-8'))

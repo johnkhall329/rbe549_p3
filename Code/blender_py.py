@@ -19,9 +19,11 @@ server_sock = socket_manager.setup_server(HOST, PORT)
 
 
 with open('./Code/asset_info.json', 'r') as f:
+    global asset_info
     asset_info = json.load(f)
 
 def handle_command(cmd):
+    global asset_info
     if 'close' in cmd:
         print(f"Closing Blender ...")
         os._exit(0)
@@ -32,9 +34,9 @@ def handle_command(cmd):
         with open(json_file, 'r') as f:
             new_scene = json.load(f)
             for asset_name, asset_instances in new_scene.items():
-                for asset_info in asset_instances:
-                    loc = asset_info.get("location", [0.0,0.0,0.0])
-                    rot = asset_info.get("rotation", [0.0,0.0,0.0])
+                for info in asset_instances:
+                    loc = info.get("location", [0.0,0.0,0.0])
+                    rot = info.get("rotation", [0.0,0.0,0.0])
                     blenderpy_utils.create_instance(asset_name, loc, rot, blender_assets, blender_collections)
     elif 'spawn' in cmd: # Simple example: "spawn Sedan_Model 1,2,0"
         spawned_asset = cmd.split('spawn')[-1].strip()
