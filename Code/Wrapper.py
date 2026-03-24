@@ -43,7 +43,7 @@ def main(args):
     if isinstance(args.headless, str): args.headless = args.headless == "True"
     image_gen = get_images_from_scene(args)
 
-    depth_predictor = DepthPredictor("MiDaS_small")
+    depth_predictor = DepthPredictor()
 
     object_detector = ObjectDetector()
     os.makedirs("./Output", exist_ok=True)
@@ -73,7 +73,6 @@ def main(args):
             object_result = object_detector.predict(frame)
             depth_im = depth_predictor.predict(frame)
 
-
             save_results_to_json(object_result, depth_im)
 
             # plt.imsave(f'Output/output{frame_i}_bounded.jpg', bounded_im)
@@ -91,9 +90,6 @@ def main(args):
             time.sleep(1)
             s.sendall(f"render ./Output/{args.sequence}\n".encode('utf-8'))
             time.sleep(2.5)
-            # s.sendall("spawn SUV\n".encode('utf-8'))
-            # time.sleep(2)
-            # s.sendall("spawn Trashbin\n".encode('utf-8'))
 
             blender_frame = cv2.imread(f"./Output/{args.sequence}.png")
 
