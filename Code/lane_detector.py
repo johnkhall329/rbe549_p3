@@ -49,6 +49,9 @@ class LaneDetector():
         self.yolop = torch.jit.load("./Models/yolopv2.pt")
         self.yolop.to(self.device).eval()
 
+        self.max_blob_size = 500
+        self.yellow_thresh = 145
+
     def detect(self, image):
         orig_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         h, w,_ = image.shape
@@ -66,7 +69,7 @@ class LaneDetector():
 
 
         filtered_mask = cv2.dilate(cv2.erode(ll_mask, np.ones((5,5))),np.ones((3,3)))
-        num_lanes, labels_im = cv2.connectedComponents(ll_mask)
+        num_lanes, labels_im = cv2.connectedComponents(filtered_mask)
 
         fused_viz = cv2.cvtColor(orig_image, cv2.COLOR_RGB2BGR)
 
@@ -77,26 +80,35 @@ class LaneDetector():
         
             # Track which Mask R-CNN label is most common for THIS lane
             class_votes = {name: 0 for name in CLASS_NAMES}
-            
+            mask_map = {name: np.zeros((h,w), dtype=np.uint8) for name in CLASS_NAMES}
+
             for m_idx, mask in enumerate(masks):
                 # Calculate overlap pixels
                 intersection = cv2.bitwise_and(cv2.dilate(lane_blob, np.ones((5,5))), mask.astype(np.uint8))
+                mask_map[labels[m_idx]] = cv2.bitwise_or(mask_map[labels[m_idx]], intersection)
                 vote_count = np.sum(intersection)
                 class_votes[labels[m_idx]] += vote_count
+                class_votes[labels[m_idx]]
                 
             # Determine winning class (Majority Vote)
             winner_class = max(class_votes, key=class_votes.get)
             
             # Only draw if we actually got a match, otherwise default to a generic class
-            if class_votes[winner_class] > 0:
+            if class_votes[winner_class] > 0 and np.sum(lane_blob)>self.max_blob_size:
                 if winner_class in [CLASS_NAMES[0], CLASS_NAMES[4], CLASS_NAMES[5]]: continue
+                winner_mask = mask_map[winner_class]*255
                 if winner_class == CLASS_NAMES[1]: winner_class = CLASS_NAMES[-1]
-                print(winner_class)
+                
+                lane_color = self.get_lane_color(cv2.cvtColor(orig_image, cv2.COLOR_RGB2BGR), winner_mask)
+                print(f'{winner_class}:{lane_color}')
+
                 color = COLORS[CLASS_NAMES.index(winner_class)]
                 # Color the YOLOP lane with the Mask R-CNN winner color
                 colored_lane = np.zeros_like(fused_viz)
                 # colored_lane[lane_blob == 1] = color
                 colored_lane[cv2.dilate(skel_lane, np.ones((3,3)))==255] = color
+                if lane_color == 'yellow':
+                    pass
                 fused_viz = cv2.addWeighted(fused_viz, 1.0, colored_lane, 0.8, 0)
 
         # result = np.array(result)
@@ -112,6 +124,30 @@ class LaneDetector():
         cv2.waitKey(1)
         return fused_viz
 
+    def get_lane_color(self, image, lane_mask):
+        """
+        Determines if a lane is 'yellow' or 'white' based on Lab color space.
+        """
+        # Convert BGR to Lab
+        lab = cv2.cvtColor(image, cv2.COLOR_BGR2Lab)
+        
+        # Extract the 'b' channel (Yellow-Blue)
+        # In OpenCV Lab, 128 is neutral. > 128 is Yellowish.
+        b_channel = lab[:, :, 2]
+        
+        # Mask the b_channel to only look at the lane pixels
+        lane_pixels = b_channel[lane_mask == 255]
+        
+        if len(lane_pixels) == 0:
+            return "unknown"
+
+        avg_yellow_score = np.mean(lane_pixels)
+        
+        # Thresholding 128 (neutral) + a small buffer for safety
+        if avg_yellow_score > self.yellow_thresh: 
+            return "yellow"
+        else:
+            return "white"
 
     def get_outputs(self, image, threshold):
         with torch.no_grad():
