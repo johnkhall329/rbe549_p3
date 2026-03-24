@@ -3,6 +3,15 @@ import os
 from glob import glob
 import json
 
+label_map = {
+    "car": "SedanAndHatchback",
+    "person": "Pedestrain",
+    "traffic light": "TrafficSignal",
+    "truck": "PickupTruck",
+    "fire hydrant": "fire",
+    "stop sign": "StopSign"
+}
+
 # Generator function to save memory
 def get_images_from_scene(args):
     undist_videos_path = os.path.abspath(os.path.join(args.data_path+'Sequences/', args.sequence, "Undist"))
@@ -58,12 +67,13 @@ def save_results_to_json(object_detection_results, depth_results):
             "rotation": [0.0, 0.0, 0.0],  # placeholder
         }
 
-        if label == 'car':
-            label = 'SedanAndHatchback'
-        if label not in scene_objects:
-            scene_objects[label] = []
+        if label in label_map.keys():
+            real_label = label_map[label]
 
-        scene_objects[label].append(obj_dict)
+            if real_label not in scene_objects.keys():
+                scene_objects[real_label] = []
+
+            scene_objects[real_label].append(obj_dict)
 
     
     with open("Code/temp_scene.json", "w") as f:
