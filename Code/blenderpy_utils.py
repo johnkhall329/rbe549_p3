@@ -5,14 +5,29 @@ import math
 
 bpy.context.scene.render.engine = 'BLENDER_EEVEE'
 
-def clear_scene(protected_assests):
-    for obj in bpy.data.objects:
-        if obj.name in protected_assests:
+def clear_scene(protected_assets):
+    """
+    Only deletes objects created during the simulation loop,
+    leaving the AssetLibrary and infrastructure intact.
+    """
+    # We iterate over a copy of the list [:] to avoid index errors while deleting
+    for obj in bpy.data.objects[:]:
+        
+        # 1. Protect specific names (Camera, Light, etc.)
+        if obj.name in protected_assets:
             continue
-        if any(col.name == "AssetLibrary" for col in obj.users_collection):
-            continue
-        bpy.data.objects.remove(obj, do_unlink=True)
-    print("Scene Cleared")
+            
+        # 2. ONLY delete objects we specifically spawned as instances
+        if obj.name.startswith("Instance_"):
+            # do_unlink=True removes it from all collections
+            bpy.data.objects.remove(obj, do_unlink=True)
+            
+    # Optional: Clean up orphaned mesh data to save RAM
+    # This removes the "mesh" data-blocks that no longer have an object using them
+    # But it won't touch your Master assets because they are linked to your Library
+    bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
+            
+    print("Scene Cleared: Removed all instances.")
 
 def preload_assets(asset_folder, asset_info):
     master_assets = {}
