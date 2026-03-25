@@ -24,7 +24,6 @@ def connect_to_blender(asset_path, args, host, port, retry_limit=10):
            args.base_blender_scene, "-P", 
            "Code/blender_py.py", "--",  asset_path]
     if args.headless: cmd.insert(1, '-b')
-    # process = subprocess.Popen(cmd)
 
     exists = False
     
@@ -73,18 +72,12 @@ def main(args):
     object_detector = ObjectDetector()
     os.makedirs("./Output", exist_ok=True)
     asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))
-    cmd = [os.path.expanduser("~")+args.blender_path, 
-           args.base_blender_scene, "-P", 
-           "Code/blender_py.py", "--",  asset_path]
-    if args.headless: cmd.insert(1, '-b')
 
-    process = None
+    # process = None
     s = None
 
     try:
-        process = subprocess.Popen(cmd)
-        
-        s = connect_to_blender('127.0.0.1', 65432, 10)
+        s = connect_to_blender(asset_path, args, '127.0.0.1', 65432, 10)
 
         time.sleep(3)
         # time.sleep(1)
@@ -140,19 +133,19 @@ def main(args):
             except Exception:
                 pass
 
-        # Kill Blender process
-        if process is not None:
-            try:
-                process.terminate()
-                process.wait(timeout=5)
-            except Exception:
-                process.kill()
+        # # Kill Blender process
+        # if process is not None:
+        #     try:
+        #         process.terminate()
+        #         process.wait(timeout=5)
+        #     except Exception:
+        #         process.kill()
 
 def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="../P3Data/",help="dataset path")
-    parser.add_argument('--sequence',default='scene5', help="Select which sequence to generate visuals for")
-    parser.add_argument('--stride', default=30, help="How many frames to skip in video")
+    parser.add_argument('--sequence',default='scene4', help="Select which sequence to generate visuals for")
+    parser.add_argument('--stride', default=1000, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
     parser.add_argument('--headless', default=True)
