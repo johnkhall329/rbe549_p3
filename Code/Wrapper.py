@@ -92,6 +92,9 @@ def main(args):
     extrinsics = np.array([[0,0,1.0,0], # camera to world of front camera
                            [-1.0,0,0,0], 
                            [0,-1.0,0,1.25]]) 
+    pitch = 0.01
+    r = np.array([[1, 0, 0],[0, np.cos(pitch), -np.sin(pitch)],[0,np.sin(pitch), np.cos(pitch)]])
+    extrinsics[:3,:3] = extrinsics[:3,:3] @ r
 
     s = None
     process = None
@@ -167,8 +170,8 @@ def main(args):
 def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
-    parser.add_argument('--sequence',default='scene2', help="Select which sequence to generate visuals for")
-    parser.add_argument('--stride', default=30, help="How many frames to skip in video")
+    parser.add_argument('--sequence',default='scene4', help="Select which sequence to generate visuals for")
+    parser.add_argument('--stride', default=50, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
     parser.add_argument('--headless', default=False)

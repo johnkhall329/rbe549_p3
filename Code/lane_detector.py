@@ -108,14 +108,15 @@ class LaneDetector():
                 colored_lane = np.zeros_like(fused_viz)
                 # colored_lane[lane_blob == 1] = color
                 colored_lane[cv2.dilate(skel_lane, np.ones((3,3)))==255] = color
-                if lane_color == 'yellow':
-                    print("sent yellow")
+                # if lane_color == 'yellow':
+                #     print("sent yellow")
                 fused_viz = cv2.addWeighted(fused_viz, 1.0, colored_lane, 0.8, 0)
 
                 world_points = self.convert_to_3D(skel_lane, K, extrinsics)
                 curve_model, in_idxs = ransac_curve(world_points)
-                blender_points = sample_curve(curve_model, world_points[in_idxs])
-                results.append({'type': winner_class, 'color': lane_color, 'curve_points': blender_points.tolist()})
+                if curve_model is not None:
+                    blender_points = sample_curve(curve_model, world_points[in_idxs])
+                    results.append({'type': winner_class, 'color': lane_color, 'curve_points': blender_points.tolist()})
 
         # result = np.array(result)
         # blank = np.zeros_like(orig_image)
@@ -271,7 +272,7 @@ def sample_curve(curve_model, in_points, n_samples = 10):
     x_max = np.max(in_points,axis=0)[0]
 
     x_samples = np.linspace(x_min, x_max, num=n_samples, endpoint=True)
-    if x_min < 10.0:
+    if x_min < 5.0:
         x_samples = np.insert(x_samples, 0, 0.0)
     y = a*x_samples**2 + b*x_samples + c
     z = np.zeros_like(x_samples)
@@ -321,4 +322,4 @@ def ransac_curve(world_points, max_iter = 100, threshold = 0.15, early_exit = 0.
         final_model, _, _, _ = np.linalg.lstsq(A_final, final_y, rcond=None)
         return final_model, best_inliers
     
-    return best_model, best_inliers
+    return None, []
