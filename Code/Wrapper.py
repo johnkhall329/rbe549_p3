@@ -27,7 +27,8 @@ def connect_to_blender(asset_path, args, host, port, retry_limit=10):
     if args.headless: cmd.insert(1, '-b')
 
     exists = False
-    
+    process = None
+
     while True:
         if attempt > retry_limit:
             raise Exception("Unable to Connect to Blender")
@@ -38,7 +39,7 @@ def connect_to_blender(asset_path, args, host, port, retry_limit=10):
             print(f"Attempting to connect to Blender (Attempt {attempt + 1})...")
             s.connect((host, port))
             print("Successfully connected to Blender!")
-            return s  # Return the active socket
+            return s, process  # Return the active socket
             
         except (socket.timeout, ConnectionRefusedError):
             attempt += 1
@@ -76,11 +77,11 @@ def main(args):
     os.makedirs("./Output", exist_ok=True)
     asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))
 
-    # process = None
     s = None
+    process = None
 
     try:
-        s = connect_to_blender(asset_path, args, '127.0.0.1', 65432, 10)
+        s, process = connect_to_blender(asset_path, args, '127.0.0.1', 65432, 10)
 
         time.sleep(3)
         # time.sleep(1)
@@ -139,13 +140,13 @@ def main(args):
             except Exception:
                 pass
 
-        # # Kill Blender process
-        # if process is not None:
-        #     try:
-        #         process.terminate()
-        #         process.wait(timeout=5)
-        #     except Exception:
-        #         process.kill()
+        # Kill Blender process
+        if process is not None:
+            try:
+                process.terminate()
+                process.wait(timeout=5)
+            except Exception:
+                process.kill()
 
 def configParser():
     parser = argparse.ArgumentParser()
