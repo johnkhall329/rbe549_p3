@@ -1,7 +1,6 @@
 # Custom
 *.pt
 Modules/*
-checkpoints/*
 Code/temp_scene.json
 
 # Byte-compiled / optimized / DLL files

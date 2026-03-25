@@ -29,7 +29,7 @@ class DepthPredictor():
 
         self.model = DepthAnythingV2(**{**model_configs[encoder], 'max_depth': max_depth}).to(self.device)
 
-        self.model.load_state_dict(torch.load(f'checkpoints/depth_anything_v2_metric_{dataset}_{encoder}.pth', map_location=self.device))
+        self.model.load_state_dict(torch.load(f'Models/depth_anything_v2_metric_{dataset}_{encoder}.pth', map_location=self.device))
         self.model.eval()
 
         
