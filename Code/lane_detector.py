@@ -52,13 +52,13 @@ class LaneDetector():
         self.max_blob_size = 500
         self.yellow_thresh = 145
 
-    def detect(self, image):
+    def detect(self, image, K, extrinsics):
         orig_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         h, w,_ = image.shape
         image = self.transform(orig_image.copy())
 
         image = image.unsqueeze(0).to(self.device)
-        masks, boxes, labels = self.get_outputs(image, 0.6)
+        masks, boxes, labels = self.get_outputs(image, 0.5)
     
         # result = self.draw_segmentation_map(orig_image, masks, boxes, labels, no_boxes=True)
 
@@ -76,7 +76,7 @@ class LaneDetector():
         for lane_id in range(1,num_lanes):
             lane_blob = (labels_im == lane_id).astype(np.uint8)
 
-            skel_lane = skeletonize(lane_blob).astype(np.uint8)*255
+            skel_lane = skeletonize(cv2.dilate(lane_blob, np.ones((5,5)))).astype(np.uint8)*255
         
             # Track which Mask R-CNN label is most common for THIS lane
             class_votes = {name: 0 for name in CLASS_NAMES}

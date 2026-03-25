@@ -76,6 +76,22 @@ def main(args):
     # lane_detector = LaneDetector()
     os.makedirs("./Output", exist_ok=True)
     asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))
+    # cmd = [os.path.expanduser("~")+args.blender_path, 
+    #        args.base_blender_scene, "-P", 
+    #        "Code/blender_py.py", "--",  asset_path]
+    # if args.headless: cmd.insert(1, '-b')
+    # process = subprocess.Popen(cmd)
+    
+    # s = connect_to_blender('127.0.0.1', 65432, 10)
+    # time.sleep(3)
+    # s = connect_to_blender(asset_path, args, '127.0.0.1', 65432, 10)
+    # time.sleep(1)
+    # s.sendall(CLEAR.encode('utf-8'))
+    # time.sleep(1)
+    K = np.load(os.path.join(args.data_path, 'Calib', 'calibration.npy'))
+    extrinsics = np.array([[0,0,1.0,0], # camera to world
+                           [-1.0,0,0,0], 
+                           [0,-1.0,0,1.25]]) 
 
     s = None
     process = None
