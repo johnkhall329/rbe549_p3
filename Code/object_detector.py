@@ -2,14 +2,23 @@ import cv2
 import torch
 
 import matplotlib.pyplot as plt
-
+import os
 
 from ultralytics import YOLO
 
 class ObjectDetector():
     # model_type should be 
-    def __init__(self, model_type="yolo26n.pt"):
-        self.model = YOLO(model_type)
+    def __init__(self, model_name="yolo26n.pt"):
+        # Define the target directory
+        model_dir = "Models"
+        
+        # Create the directory if it doesn't exist yet
+        if not os.path.exists(model_dir):
+            os.makedirs(model_dir)
+            
+        # Construct the full path: "Models/yolo11n.pt"
+        model_path = os.path.join(model_dir, model_name)
+        self.model = YOLO(model_name)
         
     def predict(self, image, format="BGR"):
         if format == "BGR":
