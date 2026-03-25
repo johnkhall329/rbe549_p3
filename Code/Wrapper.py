@@ -13,6 +13,7 @@ from parse_video import *
 from parse_results import save_yolo_results_to_json
 from depth_predictor import DepthPredictor
 from object_detector import ObjectDetector
+from lane_detector import LaneDetector
 
 CLEAR = "clear\n"
 CLOSE = "close\n"
@@ -70,6 +71,8 @@ def main(args):
     depth_predictor = DepthPredictor()
 
     object_detector = ObjectDetector()
+
+    lane_detector = LaneDetector()
     os.makedirs("./Output", exist_ok=True)
     asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))
 
@@ -91,10 +94,13 @@ def main(args):
             object_result = object_detector.predict(frame)
             depth_im = depth_predictor.predict(frame)
 
+            lanes = lane_detector.detect(frame)
+
             save_yolo_results_to_json(object_result, depth_im, args)
 
             # plt.imsave(f'Output/output{frame_i}_bounded.jpg', bounded_im)
             # plt.imsave(f'Output/output{frame_i}_depth.jpg', depth_im)
+            plt.imsave(f'Output/output{frame_i}_lanes.jpg', cv2.cvtColor(lanes, cv2.COLOR_BGR2RGB))
 
             # cv2.imshow('frame', frame)
             # cv2.waitKey(1)

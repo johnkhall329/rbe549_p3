@@ -2,6 +2,7 @@
 *.pt
 Modules/*
 checkpoints/*
+Code/temp_scene.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -214,3 +215,4 @@ __marimo__/
 P3Data/*
 Blender/*
 Output/*
+Models/*
