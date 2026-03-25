@@ -18,7 +18,7 @@ def clear_scene(protected_assets):
             continue
             
         # 2. ONLY delete objects we specifically spawned as instances
-        if obj.name.startswith("Instance_"):
+        if obj.name.startswith("Instance_") or obj.name.startswith("Lane_"):
             # do_unlink=True removes it from all collections
             bpy.data.objects.remove(obj, do_unlink=True)
             
@@ -143,7 +143,11 @@ def insert_lane(lane_num, lane_type, lane_color, lane_points, blender_collection
     mat = bpy.data.materials.new(name=f"Mat_{name}")
     mat.use_nodes = True
     nodes = mat.node_tree.nodes
-    nodes["Principled BSDF"].inputs[0].default_value = (1, 1, 0, 1.0)
+    if lane_color == 'yellow':
+        print("Got Yellow")
+        nodes["Principled BSDF"].inputs[0].default_value = (1, 1, 0, 1.0)
+    else:
+        nodes["Principled BSDF"].inputs[0].default_value = (1, 1, 1, 1.0)
     obj.data.materials.append(mat)
     
     # Give it some thickness so it's visible

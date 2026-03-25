@@ -50,7 +50,7 @@ class LaneDetector():
         self.yolop.to(self.device).eval()
 
         self.max_blob_size = 500
-        self.yellow_thresh = 145
+        self.yellow_thresh = 140
 
     def detect(self, image, K, extrinsics):
         orig_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -109,7 +109,7 @@ class LaneDetector():
                 # colored_lane[lane_blob == 1] = color
                 colored_lane[cv2.dilate(skel_lane, np.ones((3,3)))==255] = color
                 if lane_color == 'yellow':
-                    pass
+                    print("sent yellow")
                 fused_viz = cv2.addWeighted(fused_viz, 1.0, colored_lane, 0.8, 0)
 
                 world_points = self.convert_to_3D(skel_lane, K, extrinsics)
@@ -271,9 +271,11 @@ def sample_curve(curve_model, in_points, n_samples = 10):
     x_max = np.max(in_points,axis=0)[0]
 
     x_samples = np.linspace(x_min, x_max, num=n_samples, endpoint=True)
-    y_samples = a*x_samples**2 + b*x_samples + c
+    if x_min < 10.0:
+        x_samples = np.insert(x_samples, 0, 0.0)
+    y = a*x_samples**2 + b*x_samples + c
     z = np.zeros_like(x_samples)
-    return np.column_stack([x_samples, y_samples, z])
+    return np.column_stack([x_samples, y, z])
 
 
 
