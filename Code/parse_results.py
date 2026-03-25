@@ -1,10 +1,5 @@
 import json
 
-
-from scipy.io import loadmat, savemat
-from scipy.io.matlab._mio5 import varmats_from_mat
-from io import BytesIO
-import os
 import numpy as np
 
 label_map = {
