@@ -15,7 +15,7 @@ def read_socket(server_sock, active_connections, handle_callback):
         conn.setblocking(False)
         active_connections.append({"conn": conn, "buffer": ""})
     except (BlockingIOError, socket.error):
-        pass
+        conn = None
 
     for i in range(len(active_connections) - 1, -1, -1):
         item = active_connections[i]
@@ -29,6 +29,6 @@ def read_socket(server_sock, active_connections, handle_callback):
             item["buffer"] += chunk
             while "\n" in item["buffer"]:
                 line, item["buffer"] = item["buffer"].split("\n", 1)
-                handle_callback(line.strip())
+                handle_callback(line.strip(), item["conn"])
         except (BlockingIOError, socket.error):
             pass
