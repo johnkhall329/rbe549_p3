@@ -18,7 +18,7 @@ class ObjectDetector():
             
         # Construct the full path: "Models/yolo11n.pt"
         model_path = os.path.join(model_dir, model_name)
-        self.model = YOLO(model_name)
+        self.model = YOLO(model_path)
         
     def predict(self, image, format="BGR"):
         if format == "BGR":
