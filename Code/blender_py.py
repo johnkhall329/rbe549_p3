@@ -22,12 +22,13 @@ with open('./Code/asset_info.json', 'r') as f:
     global asset_info
     asset_info = json.load(f)
 
-def handle_command(cmd):
+def handle_command(cmd, client_conn):
     global asset_info
     if 'close' in cmd:
         print(f"Closing Blender ...")
         os._exit(0)
     elif 'clear' in cmd:
+        # print(asset_info)
         blenderpy_utils.clear_scene(asset_info["protected_assets"])
     elif 'load_new' in cmd:
         json_file = cmd.split('load_new')[-1].strip()
@@ -46,6 +47,12 @@ def handle_command(cmd):
         blenderpy_utils.render_scene(img_name)
     else:
         print(f"Generic command: {cmd}")
+
+    # AFTER the command is finished, send a confirmation
+    try:
+        client_conn.sendall(b"DONE\n")
+    except Exception as e:
+        print(f"Failed to send ACK: {e}")
 
 def socket_tick():
     socket_manager.read_socket(server_sock, active_connections, handle_command)
