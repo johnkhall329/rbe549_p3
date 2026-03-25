@@ -73,7 +73,7 @@ def main(args):
 
     object_detector = ObjectDetector()
 
-    # lane_detector = LaneDetector()
+    lane_detector = LaneDetector()
     os.makedirs("./Output", exist_ok=True)
     asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))
     # cmd = [os.path.expanduser("~")+args.blender_path, 
@@ -111,7 +111,7 @@ def main(args):
             object_result = object_detector.predict(frame)
             depth_im = depth_predictor.predict(frame)
 
-            # lanes = lane_detector.detect(frame)
+            lanes_im, lane_results = lane_detector.detect(frame, K, extrinsics)
 
             save_yolo_results_to_json(object_result, depth_im, args)
 
@@ -166,8 +166,8 @@ def main(args):
 
 def configParser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path',default="../P3Data/",help="dataset path")
-    parser.add_argument('--sequence',default='scene4', help="Select which sequence to generate visuals for")
+    parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
+    parser.add_argument('--sequence',default='scene1', help="Select which sequence to generate visuals for")
     parser.add_argument('--stride', default=1000, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")

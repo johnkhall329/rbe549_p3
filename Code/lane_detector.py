@@ -73,6 +73,7 @@ class LaneDetector():
 
         fused_viz = cv2.cvtColor(orig_image, cv2.COLOR_RGB2BGR)
 
+        results = []
         for lane_id in range(1,num_lanes):
             lane_blob = (labels_im == lane_id).astype(np.uint8)
 
@@ -111,6 +112,11 @@ class LaneDetector():
                     pass
                 fused_viz = cv2.addWeighted(fused_viz, 1.0, colored_lane, 0.8, 0)
 
+                world_points = self.convert_to_3D(skel_lane, K, extrinsics)
+                curve_model, in_idxs = ransac_curve(world_points)
+                blender_points = sample_curve(curve_model, world_points[in_idxs])
+                results.append({'type': winner_class, 'color': lane_color, 'curve_points': blender_points})
+
         # result = np.array(result)
         # blank = np.zeros_like(orig_image)
         # for mask in masks:
@@ -122,7 +128,20 @@ class LaneDetector():
         # cv2.imshow('Overlap', blank)
         cv2.imshow('Fused', fused_viz)
         cv2.waitKey(1)
-        return fused_viz
+        return fused_viz, results
+
+
+    def convert_to_3D(self, mask, K, extrinsics):
+        points_2d = np.argwhere(mask > 0)
+        img_points = np.stack((points_2d[:, 1], points_2d[:, 0], np.ones_like(points_2d[:, 0]))).T
+        norm_points = (np.linalg.inv(K)@img_points.T).T
+        rays = (extrinsics[:3,:3]@norm_points.T).T
+
+        safe_rays = np.where(rays[:,2] < -1e-6)
+        ts = -extrinsics[2,3]/rays[safe_rays][:,[2]] # assuming Z = 0
+        world_points = extrinsics[:3,3] + ts*rays[safe_rays]
+        return world_points
+
 
     def get_lane_color(self, image, lane_mask):
         """
@@ -245,3 +264,59 @@ class LaneDetector():
         color_mask[ll_seg_mask==1] = 255
         color_mask = cv2.resize(color_mask, (1280, 960))
         return color_mask
+    
+def sample_curve(curve_model, in_points, n_samples = 10):
+    a,b,c = curve_model
+    x_min = np.min(in_points,axis=0)[0]
+    x_max = np.max(in_points,axis=0)[0]
+
+    x_samples = np.linspace(x_min, x_max, num=n_samples, endpoint=True)
+    y_samples = a*x_samples**2 + b*x_samples + c
+    z = np.zeros_like(x_samples)
+    return np.column_stack([x_samples, y_samples, z])
+
+
+
+def ransac_curve(world_points, max_iter = 100, threshold = 0.15, early_exit = 0.9, min_inliers=10):
+    best_inliers = []
+    best_model = None
+    
+    x_pts = world_points[:, 0]
+    y_pts = world_points[:, 1]
+    n_points = len(x_pts)
+
+    if n_points < 3:
+        return None, []
+    
+    for i in range(max_iter):
+        sample_idxs = np.random.choice(n_points, 3, replace=False)
+        xs = x_pts[sample_idxs]
+        ys = y_pts[sample_idxs]
+
+        try:
+            A = np.column_stack([xs**2, xs, np.ones(3)])
+            curve_model = np.linalg.solve(A, ys)
+
+        except np.linalg.LinAlgError:
+            continue
+
+        a,b,c = curve_model
+        y_pred = a * (x_pts**2) + b * x_pts + c
+
+        distances = np.abs(y_pts-y_pred)
+        inlier_idxs = np.where(distances<threshold)[0]
+
+        if len(inlier_idxs) > len(best_inliers):
+            best_inliers = inlier_idxs
+            best_model = curve_model
+            if len(inlier_idxs)/n_points >= early_exit:
+                break
+
+    if len(best_inliers) >= min_inliers:
+        final_x = x_pts[best_inliers]
+        final_y = y_pts[best_inliers]
+        A_final = np.column_stack([final_x**2, final_x, np.ones(len(final_x))])
+        final_model, _, _, _ = np.linalg.lstsq(A_final, final_y, rcond=None)
+        return final_model, best_inliers
+    
+    return best_model, best_inliers
