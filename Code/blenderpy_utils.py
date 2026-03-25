@@ -127,6 +127,28 @@ def create_instance(asset_name, location, rotation, blender_assets, blender_coll
     else:
         print(f'{asset_name} not found')
 
+def insert_lane(lane_num, lane_type, lane_color, lane_points, blender_collections):
+    name = f'Lane_{lane_type}_{lane_num}'
+    curve_data = bpy.data.curves.new(name, type='CURVE')
+    curve_data.dimensions = '3D'
+    polyline = curve_data.splines.new('POLY')
+
+    polyline.points.add(len(lane_points) - 1)
+    for i, point in enumerate(lane_points):
+        polyline.points[i].co = (point[0], point[1], point[2], 1.0) #X, Y, Z, Weight
+
+    obj = bpy.data.objects.new(name, curve_data)
+    bpy.context.collection.objects.link(obj)
+
+    mat = bpy.data.materials.new(name=f"Mat_{name}")
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    nodes["Principled BSDF"].inputs[0].default_value = (1, 1, 0, 1.0)
+    obj.data.materials.append(mat)
+    
+    # Give it some thickness so it's visible
+    curve_data.bevel_depth = 0.05
+
 def render_scene(output_path):
     """
     Renders the current scene and saves it as a PNG.

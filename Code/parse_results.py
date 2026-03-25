@@ -12,7 +12,7 @@ label_map = {
 }
 
 
-def save_yolo_results_to_json(object_detection_results, depth_results, args):
+def save_yolo_results_to_json(object_detection_results, depth_results, lane_results, args):
 
     scene_objects = {}
 
@@ -42,6 +42,9 @@ def save_yolo_results_to_json(object_detection_results, depth_results, args):
                 scene_objects[real_label] = []
 
             scene_objects[real_label].append(obj_dict)
+
+    if len(lane_results) > 0:
+        scene_objects["Lanes"] = lane_results
 
     
     with open("Code/temp_scene.json", "w") as f:

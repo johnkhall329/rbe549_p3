@@ -35,10 +35,17 @@ def handle_command(cmd, client_conn):
         with open(json_file, 'r') as f:
             new_scene = json.load(f)
             for asset_name, asset_instances in new_scene.items():
-                for info in asset_instances:
-                    loc = info.get("location", [0.0,0.0,0.0])
-                    rot = info.get("rotation", [0.0,0.0,0.0])
-                    blenderpy_utils.create_instance(asset_name, loc, rot, blender_assets, blender_collections)
+                if asset_name == 'Lanes':
+                    for i, lane_info in enumerate(asset_instances):
+                        lane_type = lane_info.get("type", "solid-line")
+                        lane_color = lane_info.get("color", "white")
+                        lane_points = lane_info.get("curve_points", [])
+                        blenderpy_utils.insert_lane(i, lane_type, lane_color, lane_points, blender_collections)
+                else:
+                    for info in asset_instances:
+                        loc = info.get("location", [0.0,0.0,0.0])
+                        rot = info.get("rotation", [0.0,0.0,0.0])
+                        blenderpy_utils.create_instance(asset_name, loc, rot, blender_assets, blender_collections)
     elif 'spawn' in cmd: # Simple example: "spawn Sedan_Model 1,2,0"
         spawned_asset = cmd.split('spawn')[-1].strip()
         blenderpy_utils.create_instance(spawned_asset, (0,0,0), (0,0,0), blender_assets, blender_collections)

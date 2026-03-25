@@ -101,7 +101,7 @@ class LaneDetector():
                 if winner_class == CLASS_NAMES[1]: winner_class = CLASS_NAMES[-1]
                 
                 lane_color = self.get_lane_color(cv2.cvtColor(orig_image, cv2.COLOR_RGB2BGR), winner_mask)
-                print(f'{winner_class}:{lane_color}')
+                # print(f'{winner_class}:{lane_color}')
 
                 color = COLORS[CLASS_NAMES.index(winner_class)]
                 # Color the YOLOP lane with the Mask R-CNN winner color
@@ -115,7 +115,7 @@ class LaneDetector():
                 world_points = self.convert_to_3D(skel_lane, K, extrinsics)
                 curve_model, in_idxs = ransac_curve(world_points)
                 blender_points = sample_curve(curve_model, world_points[in_idxs])
-                results.append({'type': winner_class, 'color': lane_color, 'curve_points': blender_points})
+                results.append({'type': winner_class, 'color': lane_color, 'curve_points': blender_points.tolist()})
 
         # result = np.array(result)
         # blank = np.zeros_like(orig_image)
