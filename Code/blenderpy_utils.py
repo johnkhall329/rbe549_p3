@@ -18,7 +18,7 @@ def clear_scene(protected_assets):
             continue
             
         # 2. ONLY delete objects we specifically spawned as instances
-        if obj.name.startswith("Instance_"):
+        if obj.name.startswith("Instance_") or obj.name.startswith("Lane_"):
             # do_unlink=True removes it from all collections
             bpy.data.objects.remove(obj, do_unlink=True)
             
@@ -127,6 +127,34 @@ def create_instance(asset_name, location, rotation, blender_assets, blender_coll
     else:
         print(f'{asset_name} not found')
 
+def insert_lane(lane_num, lane_type, lane_color, lane_points, blender_collections):
+    name = f'Lane_{lane_type}_{lane_num}'
+    curve_data = bpy.data.curves.new(name, type='CURVE')
+    curve_data.dimensions = '3D'
+    polyline = curve_data.splines.new('POLY')
+
+    polyline.points.add(len(lane_points) - 1)
+    for i, point in enumerate(lane_points):
+        polyline.points[i].co = (point[0], point[1], point[2], 1.0) #X, Y, Z, Weight
+
+    obj = bpy.data.objects.new(name, curve_data)
+    bpy.context.collection.objects.link(obj)
+
+    color_rgb = (1, 1, 0) if lane_color == "yellow" else (1, 1, 1)
+    is_dashed = "dotted" in lane_type or "dashed" in lane_type
+    
+    mat_name = f"Mat_{lane_color}_{'Dotted' if is_dashed else 'Solid'}"
+    
+    # Reuse material if it exists, otherwise create
+    if mat_name in bpy.data.materials:
+        mat = bpy.data.materials[mat_name]
+    else:
+        mat = create_lane_material(mat_name, color_rgb, is_dashed)
+    
+    obj.data.materials.append(mat)
+    curve_data.bevel_depth = 0.04 # Thickness in meters
+    curve_data.use_fill_caps = True
+
 def render_scene(output_path):
     """
     Renders the current scene and saves it as a PNG.
@@ -152,3 +180,53 @@ def render_scene(output_path):
     print(f"Rendering to: {output_path}...")
     bpy.ops.render.render(write_still=True)
     print("Render Complete.")
+
+def create_lane_material(name, color, is_dashed=False):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    
+    # Compatibility check for Blender 4.2+
+    if hasattr(mat, "blend_method"):
+        mat.blend_method = 'HASHED'
+    
+    # In 4.2+, transparency is often handled by the 'Render Method'
+    # but for simple viewport display, HASHED is still a good fallback
+    
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    # Create Nodes
+    output = nodes.new('ShaderNodeOutputMaterial')
+    emission = nodes.new('ShaderNodeEmission')
+    emission.inputs['Color'].default_value = (*color, 1.0)
+    emission.inputs['Strength'].default_value = 3.0
+
+    if is_dashed:
+        transparent = nodes.new('ShaderNodeBsdfTransparent')
+        mix_shader = nodes.new('ShaderNodeMixShader')
+        tex_coord = nodes.new('ShaderNodeTexCoord')
+        sep_xyz = nodes.new('ShaderNodeSeparateXYZ')
+        math_mod = nodes.new('ShaderNodeMath')
+        math_greater = nodes.new('ShaderNodeMath')
+        
+        # Logic for the dashes
+        math_mod.operation = 'MODULO'
+        math_mod.inputs[1].default_value = 4.0 # 4m total cycle
+        math_greater.operation = 'GREATER_THAN'
+        math_greater.inputs[1].default_value = 2.0 # 2m dash
+        
+        # Connections
+        # Using 'Object' coordinates for real-world meter scaling
+        links.new(tex_coord.outputs['Object'], sep_xyz.inputs[0])
+        links.new(sep_xyz.outputs['X'], math_mod.inputs[0])
+        links.new(math_mod.outputs[0], math_greater.inputs[0])
+        
+        links.new(math_greater.outputs[0], mix_shader.inputs[0])
+        links.new(transparent.outputs[0], mix_shader.inputs[1])
+        links.new(emission.outputs[0], mix_shader.inputs[2])
+        links.new(mix_shader.outputs[0], output.inputs[0])
+    else:
+        links.new(emission.outputs[0], output.inputs[0])
+
+    return mat

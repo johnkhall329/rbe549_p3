@@ -73,9 +73,28 @@ def main(args):
 
     object_detector_y = ObjectDetectorYolo()
 
-    # lane_detector = LaneDetector()
+    lane_detector = LaneDetector()
     os.makedirs("./Output", exist_ok=True)
     asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))
+    # cmd = [os.path.expanduser("~")+args.blender_path, 
+    #        args.base_blender_scene, "-P", 
+    #        "Code/blender_py.py", "--",  asset_path]
+    # if args.headless: cmd.insert(1, '-b')
+    # process = subprocess.Popen(cmd)
+    
+    # s = connect_to_blender('127.0.0.1', 65432, 10)
+    # time.sleep(3)
+    # s = connect_to_blender(asset_path, args, '127.0.0.1', 65432, 10)
+    # time.sleep(1)
+    # s.sendall(CLEAR.encode('utf-8'))
+    # time.sleep(1)
+    K = np.load(os.path.join(args.data_path, 'Calib', 'calibration.npy'))
+    extrinsics = np.array([[0,0,1.0,0], # camera to world of front camera
+                           [-1.0,0,0,0], 
+                           [0,-1.0,0,1.25]]) 
+    pitch = 0.01
+    r = np.array([[1, 0, 0],[0, np.cos(pitch), -np.sin(pitch)],[0,np.sin(pitch), np.cos(pitch)]])
+    extrinsics[:3,:3] = extrinsics[:3,:3] @ r
 
     s = None
     process = None
@@ -94,9 +113,9 @@ def main(args):
             bounded_im, object_result = object_detector_y.gen_bounded_image(frame)
             depth_im = depth_predictor.predict(frame)
 
-            # lanes = lane_detector.detect(frame)
+            lanes_im, lane_results = lane_detector.detect(frame, K, extrinsics)
 
-            save_yolo_results_to_json(object_result, depth_im, args)
+            save_yolo_results_to_json(object_result, depth_im, lane_results, args)
 
             # plt.imsave(f'Output/output{frame_i}_bounded.jpg', bounded_im)
             # plt.imsave(f'Output/output{frame_i}_depth.jpg', depth_im)
@@ -151,10 +170,10 @@ def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
     parser.add_argument('--sequence',default='scene4', help="Select which sequence to generate visuals for")
-    parser.add_argument('--stride', default=1000, help="How many frames to skip in video")
+    parser.add_argument('--stride', default=50, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
-    parser.add_argument('--headless', default=True)
+    parser.add_argument('--headless', default=False)
     return parser
 
 if __name__ == "__main__":
