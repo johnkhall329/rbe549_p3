@@ -6,7 +6,7 @@ import os
 
 from ultralytics import YOLO
 
-class ObjectDetector():
+class ObjectDetectorYolo():
     # model_type should be 
     def __init__(self, model_name="yolo26n.pt"):
         # Define the target directory
@@ -42,6 +42,5 @@ class ObjectDetector():
 
         # cv2.imwrite('Output/test.jpg', annotated_img)
 
-        return annotated_img
-
+        return annotated_img, results[0]
 

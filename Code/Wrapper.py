@@ -12,7 +12,7 @@ import numpy as np
 from parse_video import *
 from parse_results import save_yolo_results_to_json
 from depth_predictor import DepthPredictor
-from object_detector import ObjectDetector
+from object_detector import ObjectDetectorYolo
 from lane_detector import LaneDetector
 
 CLEAR = "clear\n"
@@ -71,7 +71,7 @@ def main(args):
 
     depth_predictor = DepthPredictor()
 
-    object_detector = ObjectDetector()
+    object_detector_y = ObjectDetectorYolo()
 
     # lane_detector = LaneDetector()
     os.makedirs("./Output", exist_ok=True)
@@ -91,8 +91,7 @@ def main(args):
         video_writer = None
 
         for frame_i, frame in enumerate(image_gen):
-            bounded_im = object_detector.gen_bounded_image(frame)
-            object_result = object_detector.predict(frame)
+            bounded_im, object_result = object_detector_y.gen_bounded_image(frame)
             depth_im = depth_predictor.predict(frame)
 
             # lanes = lane_detector.detect(frame)
@@ -150,7 +149,7 @@ def main(args):
 
 def configParser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path',default="../P3Data/",help="dataset path")
+    parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
     parser.add_argument('--sequence',default='scene4', help="Select which sequence to generate visuals for")
     parser.add_argument('--stride', default=1000, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
