@@ -12,3 +12,6 @@ https://debuggercafe.com/lane-detection-using-mask-rcnn/
 
 YOLOPv2 can be downloaded here and put in Models:
 https://github.com/CAIC-AD/YOLOPv2?tab=readme-ov-file
+
+YOLOv8 trained on the GLARE and LISA datasets is used for sign detection:
+https://github.com/NicholasCG/GLARE_Dataset 

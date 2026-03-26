@@ -110,20 +110,20 @@ def main(args):
         video_writer = None
 
         for frame_i, frame in enumerate(image_gen):
-            bounded_im = object_detector.gen_bounded_image(frame)
-            object_result = object_detector.predict(frame)
+            # bounded_im = object_detector.gen_bounded_image(frame)
+            object_results, annotated_imgs = object_detector.predict_all(frame)
             depth_im = depth_predictor.predict(frame)
 
             lanes_im, lane_results = lane_detector.detect(frame, K, extrinsics)
 
-            save_yolo_results_to_json(object_result, depth_im, lane_results, args)
+            save_yolo_results_to_json(object_results, depth_im, lane_results, args)
 
             # plt.imsave(f'Output/output{frame_i}_bounded.jpg', bounded_im)
             # plt.imsave(f'Output/output{frame_i}_depth.jpg', depth_im)
             # plt.imsave(f'Output/output{frame_i}_lanes.jpg', cv2.cvtColor(lanes, cv2.COLOR_BGR2RGB))
 
-            # cv2.imshow('frame', frame)
-            # cv2.waitKey(1)
+            cv2.imshow('frame', cv2.cvtColor(annotated_imgs, cv2.COLOR_RGB2BGR))
+            cv2.waitKey(1)
             # do detections
 
             # save to json
@@ -135,7 +135,7 @@ def main(args):
             blender_frame = cv2.imread(f"./Output/{args.sequence}.png")
 
 
-            bounded_bgr = cv2.cvtColor(bounded_im, cv2.COLOR_RGB2BGR)
+            bounded_bgr = cv2.cvtColor(annotated_imgs, cv2.COLOR_RGB2BGR)
             bounded_h, bounded_w = bounded_bgr.shape[:2]
 
             blender_resized = cv2.resize(blender_frame, (bounded_w, bounded_h), interpolation=cv2.INTER_AREA)
@@ -170,7 +170,7 @@ def main(args):
 def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
-    parser.add_argument('--sequence',default='scene4', help="Select which sequence to generate visuals for")
+    parser.add_argument('--sequence',default='scene5', help="Select which sequence to generate visuals for")
     parser.add_argument('--stride', default=50, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")

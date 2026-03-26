@@ -127,8 +127,8 @@ class LaneDetector():
         # output = cv2.addWeighted(result, 0.5, ll_mask, 0.5, 0)
         # cv2.imshow('Segmented Image', cv2.bitwise_and(result, result, mask=ll_mask))
         # cv2.imshow('Overlap', blank)
-        cv2.imshow('Fused', fused_viz)
-        cv2.waitKey(1)
+        # cv2.imshow('Fused', fused_viz)
+        # cv2.waitKey(1)
         return fused_viz, results
 
 
@@ -157,6 +157,12 @@ class LaneDetector():
         
         # Mask the b_channel to only look at the lane pixels
         lane_pixels = b_channel[lane_mask == 255]
+
+        outside_mask = cv2.dilate(lane_mask, np.ones((7,7)), iterations=5)
+
+        outside_mask = cv2.bitwise_and(outside_mask, cv2.bitwise_not(cv2.dilate(lane_mask, np.ones((7,7)), iterations=2)))
+
+        other_mask = b_channel[outside_mask == 255]
         
         if len(lane_pixels) == 0:
             return "unknown"
@@ -164,7 +170,7 @@ class LaneDetector():
         avg_yellow_score = np.mean(lane_pixels)
         
         # Thresholding 128 (neutral) + a small buffer for safety
-        if avg_yellow_score > self.yellow_thresh: 
+        if avg_yellow_score > self.yellow_thresh and avg_yellow_score-other_mask.mean()>5.0: 
             return "yellow"
         else:
             return "white"

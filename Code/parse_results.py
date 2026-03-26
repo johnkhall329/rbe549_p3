@@ -8,40 +8,50 @@ label_map = {
     "traffic light": "TrafficSignal",
     "truck": "PickupTruck",
     "fire hydrant": "fire",
-    "stop sign": "StopSign"
+    "stop sign": "StopSign",
+    "stop": "StopSign",
+    "speedLimit": "SpeedLimitSign"
 }
 
 
 def save_yolo_results_to_json(object_detection_results, depth_results, lane_results, args):
 
     scene_objects = {}
+    extra_classes = ['stop sign'] # add other classes to skip in yolo26
 
-    for box in object_detection_results.boxes:
+    for model, model_results in object_detection_results.items():
+        for box in model_results.boxes:
 
-        x1, y1, x2, y2 = map(int, box.xyxy[0])
-        x_center, y_center, _, _ = map(int, box.xywh[0])
-        cls = int(box.cls[0])
-        label = object_detection_results.names[cls]
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            x_center, y_center, _, _ = map(int, box.xywh[0])
+            cls = int(box.cls[0])
+            label = model_results.names[cls]
+            if model == 'yolo26' and label in extra_classes: 
+                continue
+            elif model == 'lisa':
+                print(f'\n\n{label}\n\n')
 
-        # find depth
-        z_depth = depth_results[y1:y2, x1:x2].mean()
+            # find depth
+            z_depth = depth_results[y1:y2, x1:x2].mean()
 
-        x, y, z = locate_3D_point(z_depth, x_center, y_center)
-        blender_y, blender_z, blender_x = -x/2, y*0.0, z/2
+            x, y, z = locate_3D_point(z_depth, x_center, y_center)
+            blender_y, blender_z, blender_x = -x/2, y*0.0, z/2
 
-        # store
-        obj_dict = {
-            "location": [float(blender_x), float(blender_y), float(blender_z)],
-            "rotation": [0.0, 0.0, 0.0],  # placeholder
-        }
+            # store
+            obj_dict = {
+                "location": [float(blender_x), float(blender_y), float(blender_z)],
+                "rotation": [0.0, 0.0, 0.0],  # placeholder
+            }
 
-        if label in label_map.keys():
-            real_label = label_map[label]
+            if "speedLimit" in label:
+                label = label[:label.find(label.split("speedLimit")[-1])]
+            if label in label_map.keys():
+                real_label = label_map[label]
 
-            if real_label not in scene_objects.keys():
-                scene_objects[real_label] = []
+                if real_label not in scene_objects.keys():
+                    scene_objects[real_label] = []
 
-            scene_objects[real_label].append(obj_dict)
+                scene_objects[real_label].append(obj_dict)
 
     if len(lane_results) > 0:
         scene_objects["Lanes"] = lane_results
