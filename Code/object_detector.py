@@ -68,5 +68,5 @@ class ObjectDetector():
         fused_img = cv2.addWeighted(annotated_img, 0.5, lisa_annotated, 0.5, 0.0)
         fused_img = cv2.addWeighted(fused_img, 0.5, light_annotated, 0.5, 0.0)
 
-        return {'yolo26': results[0], 'lisa': lisa_results[0]}, fused_img
+        return {'yolo26': results[0], 'lisa': lisa_results[0], 'lights': light_results[0]}, fused_img
 

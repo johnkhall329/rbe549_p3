@@ -88,14 +88,16 @@ def preload_assets(asset_folder, asset_info):
     
     # Preload your dictionary
     global traffic_library
+    global off
+    off = create_traffic_material("Lens_Off", "grey.png", asset_folder)
     traffic_library = {
-        "RED_ON": [create_traffic_material("Red_Circle", "red.png", asset_folder),create_traffic_material("Lens_Off", "grey.png", asset_folder),create_traffic_material("Lens_Off", "grey.png", asset_folder)],
-        "RED_ARROW": [create_traffic_material("Red_Arrow", "red.png", asset_folder),create_traffic_material("Lens_Off", "grey.png", asset_folder),create_traffic_material("Lens_Off", "grey.png", asset_folder)],
-        "YELLOW_ON": [create_traffic_material("Lens_Off", "grey.png", asset_folder), create_traffic_material("Yellow_Circle", "yellow.png", asset_folder),create_traffic_material("Lens_Off", "grey.png", asset_folder),],
-        "YELLOW_ARROW": [create_traffic_material("Lens_Off", "grey.png", asset_folder), create_traffic_material("Yellow_Arrow", "yellow.png", asset_folder),create_traffic_material("Lens_Off", "grey.png", asset_folder)],
-        "GREEN_ON": [create_traffic_material("Lens_Off", "grey.png", asset_folder),create_traffic_material("Lens_Off", "grey.png", asset_folder),create_traffic_material("Green_Circle", "green.png", asset_folder)],
-        "GREEN_ARROW": [create_traffic_material("Lens_Off", "grey.png", asset_folder),create_traffic_material("Lens_Off", "grey.png", asset_folder),create_traffic_material("Green_Arrow", "green.png", asset_folder)]
-        # "OFF": create_traffic_material("Lens_Off", "grey.png", asset_folder),
+        "RED_ON": [create_traffic_material("Red_Circle", "red.png", asset_folder),off,off],
+        "RED_ARROW": [create_traffic_material("Red_Arrow", "red.png", asset_folder),off,off],
+        "YELLOW_ON": [off, create_traffic_material("Yellow_Circle", "yellow.png", asset_folder),off,],
+        "YELLOW_ARROW": [off, create_traffic_material("Yellow_Arrow", "yellow.png", asset_folder),off],
+        "GREEN_ON": [off,off,create_traffic_material("Green_Circle", "green.png", asset_folder)],
+        "GREEN_ARROW": [off,off,create_traffic_material("Green_Arrow", "green.png", asset_folder)],
+        "OFF": [off,off,off]
         # ... etc for all 9
     }
     return master_assets, master_collections
@@ -141,7 +143,7 @@ def set_light_state(instance_obj, state_key):
             instance_obj.material_slots[i].link = 'OBJECT'
             instance_obj.material_slots[i].material = slot_mat
 
-def create_instance(asset_name, location, rotation, blender_assets, blender_collections):
+def create_instance(asset_name, location, rotation, blender_assets, blender_collections, material = None):
     if asset_name in blender_assets:
         for model_name, model_info in blender_assets[asset_name].items():
             obj = model_info["model"]
@@ -154,7 +156,9 @@ def create_instance(asset_name, location, rotation, blender_assets, blender_coll
             else:
                 new_inst.scale = model_info["scale"]
             if asset_name == "TrafficSignal":
-                set_light_state(new_inst, "RED_ON")    
+                if material is None: material = "OFF"
+                print(material)
+                set_light_state(new_inst, material)    
     elif asset_name in blender_collections:
         master_col = bpy.data.collections.get(asset_name)
         if not master_col:

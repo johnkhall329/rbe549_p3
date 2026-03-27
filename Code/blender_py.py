@@ -45,7 +45,8 @@ def handle_command(cmd, client_conn):
                     for info in asset_instances:
                         loc = info.get("location", [0.0,0.0,0.0])
                         rot = info.get("rotation", [0.0,0.0,0.0])
-                        blenderpy_utils.create_instance(asset_name, loc, rot, blender_assets, blender_collections)
+                        mat = info.get("material", None)
+                        blenderpy_utils.create_instance(asset_name, loc, rot, blender_assets, blender_collections, material=mat)
     elif 'spawn' in cmd: # Simple example: "spawn Sedan_Model 1,2,0"
         spawned_asset = cmd.split('spawn')[-1].strip()
         blenderpy_utils.create_instance(spawned_asset, (0,0,0), (0,0,0), blender_assets, blender_collections)
