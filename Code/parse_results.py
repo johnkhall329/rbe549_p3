@@ -2,6 +2,7 @@ import json
 
 import numpy as np
 import cv2
+import os
 
 label_map = {
     "car": "SedanAndHatchback",
@@ -19,7 +20,7 @@ label_map = {
 }
 
 
-def save_yolo_results_to_json(object_detection_results, depth_results, lane_results, args):
+def save_yolo_results_to_json(object_detection_results, depth_results, lane_results, args, K):
 
     scene_objects = {}
     extra_classes = ['stop sign', 'traffic light'] # add other classes to skip in yolo26
@@ -43,30 +44,41 @@ def save_yolo_results_to_json(object_detection_results, depth_results, lane_resu
             # find depth
             z_depth = depth_results[y1:y2, x1:x2].mean()
 
-            x, y, z = locate_3D_point(z_depth, x_center, y_center)
+            x, y, z = locate_3D_point(z_depth, x_center, y_center, K)
             blender_y, blender_z, blender_x = -x/2, y*0.0, z/2
 
-            # store
-            obj_dict = {
-                "location": [float(blender_x), float(blender_y), float(blender_z)],
-                "rotation": [0.0, 0.0, 0.0],  # placeholder
-            }
+            # store if in bounds
+            contin = True
+            if abs(blender_x) > 35:
+                if label == "traffic light":
+                    blender_x = 35
+                else:
+                    contin = False
 
-            if "speedLimit" in label:
-                label = label[:label.find(label.split("speedLimit")[-1])]
-            if model == 'lights':
-                color = label
-                label = 'traffic light'
+            if abs(blender_y) > 30:
+                contin = False
 
-                # print(f'\n\n{color}\n\n')
-                obj_dict["material"] = label_map[color]
-            if label in label_map.keys():
-                real_label = label_map[label]
+            if contin:
+                obj_dict = {
+                    "location": [float(blender_x), float(blender_y), float(blender_z)],
+                    "rotation": [0.0, 0.0, 0.0],  # placeholder
+                }
 
-                if real_label not in scene_objects.keys():
-                    scene_objects[real_label] = []
+                if "speedLimit" in label:
+                    label = label[:label.find(label.split("speedLimit")[-1])]
+                if model == 'lights':
+                    color = label
+                    label = 'traffic light'
 
-                scene_objects[real_label].append(obj_dict)
+                    print(f'\n\n{color}\n\n')
+                    obj_dict["material"] = label_map[color]
+                if label in label_map.keys():
+                    real_label = label_map[label]
+
+                    if real_label not in scene_objects.keys():
+                        scene_objects[real_label] = []
+
+                    scene_objects[real_label].append(obj_dict)
 
     if len(lane_results) > 0:
         scene_objects["Lanes"] = lane_results
@@ -75,8 +87,8 @@ def save_yolo_results_to_json(object_detection_results, depth_results, lane_resu
     with open("Code/temp_scene.json", "w") as f:
         json.dump(scene_objects, f, indent=4)
 
-def locate_3D_point(depth, u, v):
-    K = np.array([[1594.7, 0.0, 655.3], [0, 1607.7, 414.4], [0, 0, 1]]) # Found by viewing the .mat file in matlav CV toolbox
+def locate_3D_point(depth, u, v, K, max_depth=20):
+    
 
     K_inv = np.linalg.inv(K)
     
