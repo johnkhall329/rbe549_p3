@@ -15,3 +15,6 @@ https://github.com/CAIC-AD/YOLOPv2?tab=readme-ov-file
 
 YOLOv8 trained on the GLARE and LISA datasets is used for sign detection:
 https://github.com/NicholasCG/GLARE_Dataset 
+
+YOLOv8 for traffic light detection Phase 1:
+https://github.com/Syazvinski/Traffic-Light-Detection-Color-Classification/ 
