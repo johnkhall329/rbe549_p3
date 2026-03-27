@@ -22,6 +22,9 @@ class ObjectDetector():
 
         lisa_path = os.path.join(model_dir, 'last.pt')
         self.lisa_model = YOLO(lisa_path)
+
+        light_path = os.path.join(model_dir, 'best_traffic_small_yolo.pt')
+        self.light_model = YOLO(light_path)
         
     def predict(self, image, format="BGR"):
         if format == "BGR":
@@ -59,7 +62,11 @@ class ObjectDetector():
         lisa_results = self.lisa_model(image)
         lisa_annotated = lisa_results[0].plot()
 
+        light_results = self.light_model(image)
+        light_annotated = light_results[0].plot()
+
         fused_img = cv2.addWeighted(annotated_img, 0.5, lisa_annotated, 0.5, 0.0)
+        fused_img = cv2.addWeighted(fused_img, 0.5, light_annotated, 0.5, 0.0)
 
         return {'yolo26': results[0], 'lisa': lisa_results[0]}, fused_img
 

@@ -5,6 +5,8 @@ import math
 
 bpy.context.scene.render.engine = 'BLENDER_EEVEE'
 
+traffic_library = {}
+
 def clear_scene(protected_assets):
     """
     Only deletes objects created during the simulation loop,
@@ -84,7 +86,60 @@ def preload_assets(asset_folder, asset_info):
 
         if  model_type=="Object" and len(master_assets[obj_name])==0: master_assets.pop(obj_name)
     
+    # Preload your dictionary
+    global traffic_library
+    traffic_library = {
+        "RED_ON": [create_traffic_material("Red_Circle", "red.png", asset_folder),create_traffic_material("Lens_Off", "grey.png", asset_folder),create_traffic_material("Lens_Off", "grey.png", asset_folder)],
+        "RED_ARROW": [create_traffic_material("Red_Arrow", "red.png", asset_folder),create_traffic_material("Lens_Off", "grey.png", asset_folder),create_traffic_material("Lens_Off", "grey.png", asset_folder)],
+        "YELLOW_ON": [create_traffic_material("Lens_Off", "grey.png", asset_folder), create_traffic_material("Yellow_Circle", "yellow.png", asset_folder),create_traffic_material("Lens_Off", "grey.png", asset_folder),],
+        "YELLOW_ARROW": [create_traffic_material("Lens_Off", "grey.png", asset_folder), create_traffic_material("Yellow_Arrow", "yellow.png", asset_folder),create_traffic_material("Lens_Off", "grey.png", asset_folder)],
+        "GREEN_ON": [create_traffic_material("Lens_Off", "grey.png", asset_folder),create_traffic_material("Lens_Off", "grey.png", asset_folder),create_traffic_material("Green_Circle", "green.png", asset_folder)],
+        "GREEN_ARROW": [create_traffic_material("Lens_Off", "grey.png", asset_folder),create_traffic_material("Lens_Off", "grey.png", asset_folder),create_traffic_material("Green_Arrow", "green.png", asset_folder)]
+        # "OFF": create_traffic_material("Lens_Off", "grey.png", asset_folder),
+        # ... etc for all 9
+    }
     return master_assets, master_collections
+
+def create_traffic_material(name, image_name, asset_folder):
+    # Create a new material
+    mat = bpy.data.materials.new(name=name)
+    mat.use_fake_user = True
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    nodes.clear()
+    
+    # Create the node setup: Image -> Emission -> Output
+    # (Using Emission makes the light actually "glow" in the render)
+    node_tex = nodes.new('ShaderNodeTexImage')
+    node_emit = nodes.new('ShaderNodeBsdfPrincipled') # Or ShaderNodeEmission
+    node_out = nodes.new('ShaderNodeOutputMaterial')
+    
+    image_path = os.path.join(asset_folder, image_name)
+    if os.path.exists(image_path):
+        node_tex.image = bpy.data.images.load(image_path)
+    else:
+        print("no img")
+    
+    # Link them
+    links = mat.node_tree.links
+    links.new(node_tex.outputs['Color'], node_emit.inputs['Base Color'])
+    links.new(node_emit.outputs['BSDF'], node_out.inputs['Surface'])
+    
+    return mat
+
+def set_light_state(instance_obj, state_key):
+    """
+    instance_obj: The mesh object of the traffic light
+    slot_index: 0 for Red, 1 for Yellow, 2 for Green
+    state_key: e.g., "RED_ARROW" or "OFF"
+    """
+    new_mat = traffic_library.get(state_key)
+    if new_mat:
+        # This is the "magic" line:
+        # It tells Blender: "Only change the material for THIS instance"
+        for i, slot_mat in enumerate(new_mat):
+            instance_obj.material_slots[i].link = 'OBJECT'
+            instance_obj.material_slots[i].material = slot_mat
 
 def create_instance(asset_name, location, rotation, blender_assets, blender_collections):
     if asset_name in blender_assets:
@@ -98,6 +153,8 @@ def create_instance(asset_name, location, rotation, blender_assets, blender_coll
                 new_inst.scale = (model_info["scale"], model_info["scale"], model_info["scale"])
             else:
                 new_inst.scale = model_info["scale"]
+            if asset_name == "TrafficSignal":
+                set_light_state(new_inst, "RED_ON")    
     elif asset_name in blender_collections:
         master_col = bpy.data.collections.get(asset_name)
         if not master_col:
