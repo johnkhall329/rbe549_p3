@@ -54,19 +54,30 @@ class ObjectDetector():
         if format == "BGR":
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        results = self.model(image)
+        main_results = self.model(image)[0]
 
         # Get annotated image (with boxes, labels, confidence)
-        annotated_img = results[0].plot()
+        # annotated_img = results[0].plot()
 
-        lisa_results = self.lisa_model(image)
-        lisa_annotated = lisa_results[0].plot()
+        lisa_results = self.lisa_model(image)[0]
+        # lisa_annotated = lisa_results[0].plot()
 
-        light_results = self.light_model(image)
-        light_annotated = light_results[0].plot()
+        light_results = self.light_model(image)[0]
+        # light_annotated = light_results[0].plot()
 
-        fused_img = cv2.addWeighted(annotated_img, 0.5, lisa_annotated, 0.5, 0.0)
-        fused_img = cv2.addWeighted(fused_img, 0.5, light_annotated, 0.5, 0.0)
+        
+        combined_res = main_results.new() 
+        combined_res.path = main_results.path
+        combined_res.orig_img = main_results.orig_img
 
-        return {'yolo26': results[0], 'lisa': lisa_results[0], 'lights': light_results[0]}, fused_img
+
+        combined_res.boxes = main_results.boxes
+        if len(lisa_results.boxes) > 0:
+            combined_res.boxes.data = torch.cat([combined_res.boxes.data, lisa_results.boxes.data], dim=0)
+        if len(light_results.boxes) > 0:
+            combined_res.boxes.data = torch.cat([combined_res.boxes.data, light_results.boxes.data], dim=0)
+
+        fused_img = combined_res.plot()
+
+        return {'yolo26': main_results, 'lisa': lisa_results, 'lights': light_results}, fused_img
 
