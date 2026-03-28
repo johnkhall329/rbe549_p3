@@ -6,6 +6,11 @@ import os
 
 from ultralytics import YOLO
 
+from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
+
+from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
+from accelerate import Accelerator
+
 class ObjectDetector():
     # model_type should be 
     def __init__(self, model_name="yolo26n.pt"):
@@ -25,6 +30,15 @@ class ObjectDetector():
 
         light_path = os.path.join(model_dir, 'best_traffic_small_yolo.pt')
         self.light_model = YOLO(light_path)
+
+        dino_model_id = "IDEA-Research/grounding-dino-tiny"
+
+        self.dino_labels = [["red light", " car", "truck", "pedestrian", "stop sign", "yield sign", "green arrow", "stop light", "garbage bin"]]
+
+        self.processor = AutoProcessor.from_pretrained(dino_model_id)
+        self.grounded_dino_model = AutoModelForZeroShotObjectDetection.from_pretrained(dino_model_id) # .to(device)
+
+        
         
     def predict(self, image, format="BGR"):
         if format == "BGR":
@@ -53,6 +67,8 @@ class ObjectDetector():
     def predict_all(self, image, format="BGR"):
         if format == "BGR":
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        
+        height, width = image.shape[:2]
 
         main_results = self.model(image)[0]
 
@@ -65,7 +81,31 @@ class ObjectDetector():
         light_results = self.light_model(image)[0]
         # light_annotated = light_results[0].plot()
 
-        
+        dino_inputs = self.processor(images=image, text=self.dino_labels, return_tensors="pt")# .to(model.device)
+        with torch.no_grad():
+            outputs = self.grounded_dino_model(**dino_inputs)
+
+        dino_result = self.processor.post_process_grounded_object_detection(
+            outputs,
+            dino_inputs.input_ids,
+            threshold=0.4,
+            text_threshold=0.3,
+            target_sizes=[(height, width)]
+        )[0]   
+
+        dino_img = image.copy()
+        for box, score, label in zip(dino_result["boxes"], dino_result["scores"], dino_result["labels"]):
+            # Convert box to integers
+            xmin, ymin, xmax, ymax = map(int, box.tolist())
+            
+            # Draw rectangle (Green)
+            cv2.rectangle(dino_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+            
+            # Add label text
+            label_text = f"{label}: {score:.2f}"
+            cv2.putText(dino_img, label_text, (xmin, ymin - 10), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
         combined_res = main_results.new() 
         combined_res.path = main_results.path
         combined_res.orig_img = main_results.orig_img
@@ -79,5 +119,5 @@ class ObjectDetector():
 
         fused_img = combined_res.plot()
 
-        return {'yolo26': main_results, 'lisa': lisa_results, 'lights': light_results}, fused_img
+        return {'yolo26': main_results, 'lisa': lisa_results, 'lights': light_results}, fused_img, dino_img
 

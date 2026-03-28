@@ -111,7 +111,7 @@ def main(args):
 
         for frame_i, frame in enumerate(image_gen):
             # bounded_im = object_detector.gen_bounded_image(frame)
-            object_results, annotated_img = object_detector.predict_all(frame)
+            object_results, annotated_img, dino_img = object_detector.predict_all(frame)
             depth_im = depth_predictor.predict(frame)
 
             lanes_im, lane_results = lane_detector.detect(frame, K, extrinsics)
@@ -119,6 +119,7 @@ def main(args):
             save_yolo_results_to_json(object_results, depth_im, lane_results, args, K)
 
             # plt.imsave(f'Output/output{frame_i}_bounded.jpg', annotated_img)
+            plt.imsave(f'Output/output{frame_i}_gdino.jpg', dino_img)
             # plt.imsave(f'Output/output{frame_i}_depth.jpg', depth_im)
             # plt.imsave(f'Output/output{frame_i}_lanes.jpg', cv2.cvtColor(lanes, cv2.COLOR_BGR2RGB))
 
@@ -170,8 +171,8 @@ def main(args):
 def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
-    parser.add_argument('--sequence',default='scene1', help="Select which sequence to generate visuals for")
-    parser.add_argument('--stride', default=50, help="How many frames to skip in video")
+    parser.add_argument('--sequence',default='scene8', help="Select which sequence to generate visuals for")
+    parser.add_argument('--stride', default=100, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
     parser.add_argument('--headless', default=True)
