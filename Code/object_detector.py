@@ -30,15 +30,6 @@ class ObjectDetector():
 
         light_path = os.path.join(model_dir, 'best_traffic_small_yolo.pt')
         self.light_model = YOLO(light_path)
-
-        dino_model_id = "IDEA-Research/grounding-dino-tiny"
-
-        self.dino_labels = [["red light", " car", "truck", "pedestrian", "stop sign", "yield sign", "green arrow", "stop light", "garbage bin"]]
-
-        self.processor = AutoProcessor.from_pretrained(dino_model_id)
-        self.grounded_dino_model = AutoModelForZeroShotObjectDetection.from_pretrained(dino_model_id) # .to(device)
-
-        
         
     def predict(self, image, format="BGR"):
         if format == "BGR":
@@ -48,28 +39,9 @@ class ObjectDetector():
 
         return results[0]
 
-    def gen_bounded_image(self, image, format="BGR"):
-        if format == "BGR":
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        results = self.model(image)
-
-        # Get annotated image (with boxes, labels, confidence)
-        annotated_img = results[0].plot()
-
-        # Convert back to BGR for saving with cv2
-        # annotated_img = cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR)
-
-        # cv2.imwrite('Output/test.jpg', annotated_img)
-
-        return annotated_img
-    
     def predict_all(self, image, format="BGR"):
         if format == "BGR":
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        
-        height, width = image.shape[:2]
-
         main_results = self.model(image)[0]
 
         # Get annotated image (with boxes, labels, confidence)
@@ -81,7 +53,44 @@ class ObjectDetector():
         light_results = self.light_model(image)[0]
         # light_annotated = light_results[0].plot()
 
-        dino_inputs = self.processor(images=image, text=self.dino_labels, return_tensors="pt")# .to(model.device)
+        combined_res = main_results.new() 
+        combined_res.path = main_results.path
+        combined_res.orig_img = main_results.orig_img
+
+
+        combined_res.boxes = main_results.boxes
+        if len(lisa_results.boxes) > 0:
+            combined_res.boxes.data = torch.cat([combined_res.boxes.data, lisa_results.boxes.data], dim=0)
+        if len(light_results.boxes) > 0:
+            combined_res.boxes.data = torch.cat([combined_res.boxes.data, light_results.boxes.data], dim=0)
+
+        fused_img = combined_res.plot()
+
+        return {'yolo26': main_results, 'lisa': lisa_results, 'lights': light_results}, fused_img
+    
+
+class ObjectDetectorGroundedDINO():
+    def __init__(self, device="cpu"):
+
+        self.device = device
+
+        dino_model_id = "IDEA-Research/grounding-dino-tiny"
+
+        self.dino_labels = [["car", "person", "traffic light", "truck", "fire hydrant", "stop sign", "stop", "speed limit sign", "garbage bin", "bicycle", "traffic cone", "motorcycle", "trash can"]]
+        # self.dino_labels = "red light . car . truck . pedestrian . stop sign . yield sign . green arrow . stop light . garbage bin . one way sign . bicycle . motorcycle ."
+
+        self.processor = AutoProcessor.from_pretrained(dino_model_id)
+        self.grounded_dino_model = AutoModelForZeroShotObjectDetection.from_pretrained(dino_model_id).to(self.device)
+
+    def predict(self, image, format="BGR"):
+        if format == "BGR":
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        
+        height, width = image.shape[:2]
+
+        torch.cuda.empty_cache()
+        dino_inputs = self.processor(images=image, text=self.dino_labels, return_tensors="pt").to(self.device)
+
         with torch.no_grad():
             outputs = self.grounded_dino_model(**dino_inputs)
 
@@ -105,19 +114,5 @@ class ObjectDetector():
             label_text = f"{label}: {score:.2f}"
             cv2.putText(dino_img, label_text, (xmin, ymin - 10), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
-        combined_res = main_results.new() 
-        combined_res.path = main_results.path
-        combined_res.orig_img = main_results.orig_img
-
-
-        combined_res.boxes = main_results.boxes
-        if len(lisa_results.boxes) > 0:
-            combined_res.boxes.data = torch.cat([combined_res.boxes.data, lisa_results.boxes.data], dim=0)
-        if len(light_results.boxes) > 0:
-            combined_res.boxes.data = torch.cat([combined_res.boxes.data, light_results.boxes.data], dim=0)
-
-        fused_img = combined_res.plot()
-
-        return {'yolo26': main_results, 'lisa': lisa_results, 'lights': light_results}, fused_img, dino_img
-
+        
+        return dino_result, dino_img
