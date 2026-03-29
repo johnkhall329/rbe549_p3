@@ -10,9 +10,9 @@ import numpy as np
 
 
 from parse_video import *
-from parse_results import save_yolo_results_to_json
+from parse_results import save_yolo_results_to_json, save_dino_results_to_json
 from depth_predictor import DepthPredictor
-from object_detector import ObjectDetector
+from object_detector import ObjectDetector, ObjectDetectorGroundedDINO
 from lane_detector import LaneDetector
 
 CLEAR = "clear\n"
@@ -71,7 +71,7 @@ def main(args):
 
     depth_predictor = DepthPredictor()
 
-    object_detector = ObjectDetector()
+    object_detector = ObjectDetectorGroundedDINO()
 
     lane_detector = LaneDetector()
     os.makedirs("./Output", exist_ok=True)
@@ -110,16 +110,16 @@ def main(args):
         video_writer = None
 
         for frame_i, frame in enumerate(image_gen):
-            # bounded_im = object_detector.gen_bounded_image(frame)
-            object_results, annotated_img, dino_img = object_detector.predict_all(frame)
+            object_results, annotated_img = object_detector.predict(frame)
             depth_im = depth_predictor.predict(frame)
 
             lanes_im, lane_results = lane_detector.detect(frame, K, extrinsics)
 
-            save_yolo_results_to_json(object_results, depth_im, lane_results, args, K)
+            # save_yolo_results_to_json(object_results, depth_im, lane_results, args, K)
+            save_dino_results_to_json(object_results, depth_im, lane_results, args, K)
 
             # plt.imsave(f'Output/output{frame_i}_bounded.jpg', annotated_img)
-            plt.imsave(f'Output/output{frame_i}_gdino.jpg', dino_img)
+            # plt.imsave(f'Output/output{frame_i}_gdino.jpg', dino_img)
             # plt.imsave(f'Output/output{frame_i}_depth.jpg', depth_im)
             # plt.imsave(f'Output/output{frame_i}_lanes.jpg', cv2.cvtColor(lanes, cv2.COLOR_BGR2RGB))
 

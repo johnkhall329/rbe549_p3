@@ -4,7 +4,7 @@ import numpy as np
 import cv2
 import os
 
-label_map = {
+LABEL_MAP_YOLO = {
     "car": "SedanAndHatchback",
     "person": "Pedestrain",
     "traffic light": "TrafficSignal",
@@ -18,6 +18,79 @@ label_map = {
     "green": "GREEN_ON",
     "off": "OFF"
 }
+
+LABEL_MAP_DINO = {
+    "car": "SedanAndHatchback",
+    "person": "Pedestrain",
+    "traffic light": "TrafficSignal",
+    "truck": "PickupTruck",
+    "fire hydrant": "fire",
+    "stop sign": "StopSign",
+    "stop": "StopSign",
+    "speed limit sign": "SpeedLimitSign",
+    "garbage bin":"trashbin",
+    "bicycle": "Bicycle",
+    "motorcycle": "Motorcycle",
+    "traffic cone": "TrafficConeAndCylinder",
+    "trash can": "Dustbin",
+}
+
+
+def save_dino_results_to_json(object_detection_results, depth_results, lane_results, args, K):
+    scene_objects = {}
+
+    for box, score, label in zip(object_detection_results["boxes"], object_detection_results["scores"], object_detection_results["labels"]):
+        xmin, ymin, xmax, ymax = map(int, box.tolist())
+
+        x_center, y_center = ((xmax + xmin)//2), ((ymax + ymin)//2)
+        
+        z_depth = depth_results[ymin:ymax, xmin:xmax].mean()
+
+        x, y, z = locate_3D_point(z_depth, x_center, y_center, K)
+        blender_y, blender_z, blender_x = -x/1.7, y*0.0, z/1.7
+ 
+        contin = True
+        if abs(blender_x) > 35:
+            if label == "traffic light":
+                blender_x = 35
+            else:
+                contin = False
+
+        if abs(blender_y) > 30:
+            contin = False
+
+        if contin:
+            save_result_to_dict(scene_objects, label, blender_x, blender_y, blender_z, label_map=LABEL_MAP_DINO)
+
+    if len(lane_results) > 0:
+        scene_objects["Lanes"] = lane_results
+
+    with open("Code/temp_scene.json", "w") as f:
+        json.dump(scene_objects, f, indent=4)
+
+
+def save_result_to_dict(scene_dict, label, bx, by, bz, label_map, model=None):
+    obj_dict = {
+            "location": [float(bx), float(by), float(bz)],
+            "rotation": [0.0, 0.0, 0.0],  # placeholder
+        }
+
+    if "speedLimit" in label:
+        label = label[:label.find(label.split("speedLimit")[-1])]
+    if model and model == 'lights':
+        color = label
+        label = 'traffic light'
+
+        print(f'\n\n{color}\n\n')
+        obj_dict["material"] = label_map[color]
+    if label in label_map.keys():
+        real_label = label_map[label]
+
+        if real_label not in scene_dict.keys():
+            scene_dict[real_label] = []
+
+        scene_dict[real_label].append(obj_dict)
+
 
 
 def save_yolo_results_to_json(object_detection_results, depth_results, lane_results, args, K):
@@ -59,27 +132,8 @@ def save_yolo_results_to_json(object_detection_results, depth_results, lane_resu
                 contin = False
 
             if contin:
-                obj_dict = {
-                    "location": [float(blender_x), float(blender_y), float(blender_z)],
-                    "rotation": [0.0, 0.0, 0.0],  # placeholder
-                }
-
-                if "speedLimit" in label:
-                    label = label[:label.find(label.split("speedLimit")[-1])]
-                if model == 'lights':
-                    color = label
-                    label = 'traffic light'
-
-                    print(f'\n\n{color}\n\n')
-                    obj_dict["material"] = label_map[color]
-                if label in label_map.keys():
-                    real_label = label_map[label]
-
-                    if real_label not in scene_objects.keys():
-                        scene_objects[real_label] = []
-
-                    scene_objects[real_label].append(obj_dict)
-
+                save_result_to_dict(scene_objects, label, blender_x, blender_y, blender_z, label_map=LABEL_MAP_YOLO, model=model)
+                
     if len(lane_results) > 0:
         scene_objects["Lanes"] = lane_results
 
@@ -88,8 +142,6 @@ def save_yolo_results_to_json(object_detection_results, depth_results, lane_resu
         json.dump(scene_objects, f, indent=4)
 
 def locate_3D_point(depth, u, v, K, max_depth=20):
-    
-
     K_inv = np.linalg.inv(K)
     
     # Create homogeneous pixel vector
