@@ -58,7 +58,7 @@ def save_yolo_results_to_json(object_detection_results, depth_results, lane_resu
                 color = label
                 label = 'traffic light'
 
-                print(f'\n\n{color}\n\n')
+                # print(f'\n\n{color}\n\n')
                 obj_dict["material"] = label_map[color]
             if label in label_map.keys():
                 real_label = label_map[label]

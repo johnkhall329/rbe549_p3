@@ -92,40 +92,96 @@ def preload_assets(asset_folder, asset_info):
     off = create_traffic_material("Lens_Off", "grey.png", asset_folder)
     traffic_library = {
         "RED_ON": [create_traffic_material("Red_Circle", "red.png", asset_folder),off,off],
-        "RED_ARROW": [create_traffic_material("Red_Arrow", "red.png", asset_folder),off,off],
+        "RED_ARROW": [create_traffic_material("Red_Arrow", "red_arrow.png", asset_folder),off,off],
         "YELLOW_ON": [off, create_traffic_material("Yellow_Circle", "yellow.png", asset_folder),off,],
-        "YELLOW_ARROW": [off, create_traffic_material("Yellow_Arrow", "yellow.png", asset_folder),off],
+        "YELLOW_ARROW": [off, create_traffic_material("Yellow_Arrow", "yellow_arrow.png", asset_folder),off],
         "GREEN_ON": [off,off,create_traffic_material("Green_Circle", "green.png", asset_folder)],
-        "GREEN_ARROW": [off,off,create_traffic_material("Green_Arrow", "green.png", asset_folder)],
+        "GREEN_ARROW": [off,off,create_traffic_material("Green_Arrow", "green_arrow.png", asset_folder)],
         "OFF": [off,off,off]
         # ... etc for all 9
     }
     return master_assets, master_collections
 
 def create_traffic_material(name, image_name, asset_folder):
+    bg_color = (0.467, 0.463, 0.482)
     # Create a new material
     mat = bpy.data.materials.new(name=name)
     mat.use_fake_user = True
     mat.use_nodes = True
     nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
     nodes.clear()
     
-    # Create the node setup: Image -> Emission -> Output
-    # (Using Emission makes the light actually "glow" in the render)
-    node_tex = nodes.new('ShaderNodeTexImage')
-    node_emit = nodes.new('ShaderNodeBsdfPrincipled') # Or ShaderNodeEmission
-    node_out = nodes.new('ShaderNodeOutputMaterial')
-    
-    image_path = os.path.join(asset_folder, image_name)
-    if os.path.exists(image_path):
-        node_tex.image = bpy.data.images.load(image_path)
+    if 'arrow' in image_name:
+        node_tex = nodes.new('ShaderNodeTexImage')
+        node_mix = nodes.new('ShaderNodeMix') 
+        node_mix.data_type = 'RGBA'
+
+        # --- NEW NODE: Boosts the Color Saturated ---
+        node_hsv = nodes.new('ShaderNodeHueSaturation')
+        node_hsv.inputs['Saturation'].default_value = 2.0 # Double the color intensity
+        node_hsv.inputs['Value'].default_value = 0.5      # Keep brightness steady
+        
+        node_bright = nodes.new('ShaderNodeMath')
+        node_bright.operation = 'MULTIPLY'
+        node_bright.inputs[1].default_value = 2.0 # Lower this slightly so color stays visible
+
+        node_bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+        node_out = nodes.new('ShaderNodeOutputMaterial')
+        
+        # Load image (standard code)
+        image_path = os.path.join(asset_folder, image_name)
+        if os.path.exists(image_path):
+            node_tex.image = bpy.data.images.load(image_path)
+
+        # 1. MIXING THE COLORS
+        links.new(node_tex.outputs['Alpha'], node_mix.inputs['Factor'])
+        node_mix.inputs['A'].default_value = (*bg_color, 1.0)
+        links.new(node_tex.outputs['Color'], node_mix.inputs['B']) 
+
+        # 2. PROCESSING THE COLOR (The "Pronounced" Fix)
+        # We send the mixed result through the HSV node to "deepen" the color
+        links.new(node_mix.outputs['Result'], node_hsv.inputs['Color'])
+
+        # 3. GLOW LOGIC
+        links.new(node_tex.outputs['Alpha'], node_bright.inputs[0])
+        links.new(node_bright.outputs['Value'], node_bsdf.inputs['Emission Strength'])
+
+        # 4. FINAL CONNECTIONS
+        # Use the "Deepened" color for Base and Emission
+        links.new(node_hsv.outputs['Color'], node_bsdf.inputs['Base Color'])
+        links.new(node_hsv.outputs['Color'], node_bsdf.inputs['Emission Color'])
+        
+        links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
     else:
-        print("no img")
-    
+        node_tex = nodes.new('ShaderNodeTexImage')
+        node_emit = nodes.new('ShaderNodeBsdfPrincipled') # Or ShaderNodeEmission
+        node_out = nodes.new('ShaderNodeOutputMaterial')
+
+        image_path = os.path.join(asset_folder, image_name)
+        if os.path.exists(image_path):
+            node_tex.image = bpy.data.images.load(image_path)
+        else:
+            print("no img")
+
+        links.new(node_tex.outputs['Color'], node_emit.inputs['Base Color'])
+        links.new(node_emit.outputs['BSDF'], node_out.inputs['Surface'])
+
+
     # Link them
-    links = mat.node_tree.links
-    links.new(node_tex.outputs['Color'], node_emit.inputs['Base Color'])
-    links.new(node_emit.outputs['BSDF'], node_out.inputs['Surface'])
+    # links.new(node_tex.outputs['Color'], node_bsdf.inputs['Base Color'])
+    
+    # print(image_name)
+    # if "arrow" in image_name:
+    # # Link texture to Emission Color (this makes it a light source)
+    #     links.new(node_tex.outputs['Color'], node_bsdf.inputs['Emission Color'])
+        
+    #     # 4. SET BRIGHTNESS:
+    #     # Increase this value (e.g., 5.0 to 20.0) to make it brighter
+    #     node_bsdf.inputs['Emission Strength'].default_value = 15.0
+        
+    # links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+
     
     return mat
 
@@ -159,6 +215,10 @@ def create_instance(asset_name, location, rotation, blender_assets, blender_coll
                 if material is None: material = "OFF"
                 print(material)
                 set_light_state(new_inst, material)    
+                bpy.ops.object.constraint_add(type='TRACK_TO')
+                bpy.context.object.constraints["Track To"].target = bpy.data.objects["Camera"]
+                bpy.context.object.constraints["Track To"].up_axis = 'UP_Y'
+                bpy.context.object.constraints["Track To"].track_axis = 'TRACK_X'
     elif asset_name in blender_collections:
         master_col = bpy.data.collections.get(asset_name)
         if not master_col:
