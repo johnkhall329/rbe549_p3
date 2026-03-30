@@ -36,7 +36,8 @@ class DepthPredictor():
     def predict(self, image, format="BGR"):
         if format == "RGB":
             image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-
+        
+        torch.cuda.empty_cache()
         with torch.no_grad():
             depth = self.model.infer_image(image) #
 
