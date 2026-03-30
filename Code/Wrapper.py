@@ -17,7 +17,7 @@ from lane_detector import LaneDetector
 
 CLEAR = "clear\n"
 CLOSE = "close\n"
-FPS = 8
+FPS = 1
 
 def connect_to_blender(asset_path, args, host, port, retry_limit=10):
     attempt=0
@@ -124,6 +124,7 @@ def main(args):
             # plt.imsave(f'Output/output{frame_i}_lanes.jpg', cv2.cvtColor(lanes, cv2.COLOR_BGR2RGB))
 
             # cv2.imshow('frame', cv2.cvtColor(annotated_imgs, cv2.COLOR_RGB2BGR))
+            # cv2.imshow('frame', frame)
             # cv2.waitKey(1)
             # do detections
 
@@ -171,7 +172,7 @@ def main(args):
 def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
-    parser.add_argument('--sequence',default='scene8', help="Select which sequence to generate visuals for")
+    parser.add_argument('--sequence',default='test', help="Select which sequence to generate visuals for")
     parser.add_argument('--stride', default=100, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")

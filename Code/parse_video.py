@@ -5,25 +5,36 @@ import json
 
 # Generator function to save memory
 def get_images_from_scene(args):
-    undist_videos_path = os.path.abspath(os.path.join(args.data_path+'Sequences/', args.sequence, "Undist"))
-    
-    front_vid_path = glob(undist_videos_path+"/*front*")[0]
+    if args.sequence == 'test':
+        undist_videos_path = os.path.abspath(os.path.join(args.data_path+'Sequences/', args.sequence))
 
-    cap = cv2.VideoCapture(front_vid_path)
-    
-    if not cap.isOpened():
-        print(f"Error: Could not open video {front_vid_path}")
-        return
+        image_paths = glob(undist_videos_path + "/*.jpg")
 
-    i = 0
-    try:
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-            if i % args.stride == 0:
-                yield frame
-            i += 1
-    finally:
-        cap.release()
+
+        for path in image_paths:
+            im = cv2.imread(path, cv2.IMREAD_COLOR)
+            yield im
+
+    else:
+        undist_videos_path = os.path.abspath(os.path.join(args.data_path+'Sequences/', args.sequence, "Undist"))
+        
+        front_vid_path = glob(undist_videos_path+"/*front*")[0]
+
+        cap = cv2.VideoCapture(front_vid_path)
+        
+        if not cap.isOpened():
+            print(f"Error: Could not open video {front_vid_path}")
+            return
+
+        i = 0
+        try:
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                if i % args.stride == 0:
+                    yield frame
+                i += 1
+        finally:
+            cap.release()
 
