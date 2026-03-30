@@ -20,7 +20,9 @@ LABEL_MAP_YOLO = {
 }
 
 LABEL_MAP_DINO = {
-    "car": "SedanAndHatchback",
+    "sedan": "SedanAndHatchback",
+    "hatchback": "SedanAndHatchback",
+    "suv": "SUV",
     "person": "Pedestrain",
     "traffic light": "TrafficSignal",
     "truck": "PickupTruck",
@@ -31,8 +33,7 @@ LABEL_MAP_DINO = {
     "garbage bin":"trashbin",
     "bicycle": "Bicycle",
     "motorcycle": "Motorcycle",
-    "traffic cone": "TrafficConeAndCylinder",
-    "trash can": "Dustbin",
+    "traffic cone": "TrafficConeAndCylinder"
 }
 
 
@@ -50,17 +51,17 @@ def save_dino_results_to_json(object_detection_results, depth_results, lane_resu
         blender_y, blender_z, blender_x = -x/1.7, y*0.0, z/1.7
  
         contin = True
-        if abs(blender_x) > 35:
+        if abs(blender_x) > 30:
             if label == "traffic light":
-                blender_x = 35
+                blender_x = 30
             else:
                 contin = False
 
-        if abs(blender_y) > 30:
+        if abs(blender_y) > 25:
             contin = False
 
         if contin:
-            save_result_to_dict(scene_objects, label, blender_x, blender_y, blender_z, label_map=LABEL_MAP_DINO)
+            save_result_to_dict(scene_objects, label.strip(), blender_x, blender_y, blender_z, label_map=LABEL_MAP_DINO)
 
     if len(lane_results) > 0:
         scene_objects["Lanes"] = lane_results

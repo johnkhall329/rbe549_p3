@@ -76,11 +76,52 @@ class ObjectDetectorGroundedDINO():
 
         dino_model_id = "IDEA-Research/grounding-dino-tiny"
 
-        self.dino_labels = [["car", "person", "traffic light", "truck", "fire hydrant", "stop sign", "stop", "speed limit sign", "garbage bin", "bicycle", "traffic cone", "motorcycle", "trash can"]]
-        # self.dino_labels = "red light . car . truck . pedestrian . stop sign . yield sign . green arrow . stop light . garbage bin . one way sign . bicycle . motorcycle ."
+        # self.dino_label_list = [["car", "person", "traffic light", "truck", "fire hydrant", "stop sign", "stop", "speed limit sign", "garbage bin", "bicycle", "traffic cone", "motorcycle", "trash can"]]
+        self.dino_labels = "sedan . " \
+        "hatchback . " \
+        "person . " \
+        "traffic light . " \
+        "pickup truck . " \
+        "box truck . " \
+        "SUV . " \
+        "fire hydrant . " \
+        "stop sign . " \
+        "stop . " \
+        "garbage bin . " \
+        "bicycle . " \
+        "traffic cone . " \
+        "motorcycle . " \
+        "road sign . " \
+        
+        self.dino_traffic_labels = "circular light . asymmetric light . green . yellow . red . triangular light . left arrow light . diamond light . 3 . non-circular light . chevron light . left leaning light ."
 
         self.processor = AutoProcessor.from_pretrained(dino_model_id)
         self.grounded_dino_model = AutoModelForZeroShotObjectDetection.from_pretrained(dino_model_id).to(self.device)
+
+    
+    def predict_traffic(self, image):
+
+        upscaled_light = cv2.resize(image, (256, 256), interpolation=cv2.INTER_CUBIC)
+
+        height, width = upscaled_light.shape[:2]
+
+        torch.cuda.empty_cache()
+        dino_inputs = self.processor(images=upscaled_light, text=self.dino_traffic_labels, return_tensors="pt").to(self.device)
+
+        with torch.no_grad():
+            outputs = self.grounded_dino_model(**dino_inputs)
+
+        dino_result = self.processor.post_process_grounded_object_detection(
+            outputs,
+            dino_inputs.input_ids,
+            threshold=0.4,
+            text_threshold=0.3,
+            target_sizes=[(height, width)]
+        )[0]
+
+
+        # use some logic to parse this
+        return dino_result["labels"][0]
 
     def predict(self, image, format="BGR"):
         if format == "BGR":
@@ -103,6 +144,7 @@ class ObjectDetectorGroundedDINO():
         )[0]   
 
         dino_img = image.copy()
+        details = []
         for box, score, label in zip(dino_result["boxes"], dino_result["scores"], dino_result["labels"]):
             # Convert box to integers
             xmin, ymin, xmax, ymax = map(int, box.tolist())
@@ -114,5 +156,20 @@ class ObjectDetectorGroundedDINO():
             label_text = f"{label}: {score:.2f}"
             cv2.putText(dino_img, label_text, (xmin, ymin - 10), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        
+            
+            image_crop = image[ymin:ymax, xmin:xmax]
+
+            # detail = self.analyze_details(image_crop, label)
+            # details.append(detail)
+
+        # dino_result["details"] = details
         return dino_result, dino_img
+
+    def analyze_details(self, image, label):
+        if label == "traffic light":
+            return self.predict_traffic()
+        elif label == "person":
+            pass
+        elif label == "car":
+            pass
+        return ''
