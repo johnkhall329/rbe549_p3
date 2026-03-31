@@ -3,6 +3,7 @@ import json
 import numpy as np
 import cv2
 import os
+import glob
 
 LABEL_MAP_YOLO = {
     "car": "SedanAndHatchback",
@@ -40,7 +41,7 @@ LABEL_MAP_DINO = {
 def save_dino_results_to_json(object_detection_results, depth_results, lane_results, args, K, extrinsics):
     scene_objects = {}
 
-    for box, score, label in zip(object_detection_results["boxes"], object_detection_results["scores"], object_detection_results["labels"]):
+    for box, score, label, detail in zip(object_detection_results["boxes"], object_detection_results["scores"], object_detection_results["labels"], object_detection_results["details"]):
         xmin, ymin, xmax, ymax = map(int, box.tolist())
 
         x_center, y_center = ((xmax + xmin)//2), ((ymax + ymin)//2)
@@ -61,7 +62,7 @@ def save_dino_results_to_json(object_detection_results, depth_results, lane_resu
             contin = False
 
         if contin:
-            save_result_to_dict(scene_objects, label.strip(), blender_x, blender_y, blender_z, label_map=LABEL_MAP_DINO)
+            save_result_to_dict(scene_objects, label.strip(), detail, blender_x, blender_y, blender_z, label_map=LABEL_MAP_DINO)
 
     if len(lane_results) > 0:
         scene_objects["Lanes"] = lane_results
@@ -70,7 +71,7 @@ def save_dino_results_to_json(object_detection_results, depth_results, lane_resu
         json.dump(scene_objects, f, indent=4)
 
 
-def save_result_to_dict(scene_dict, label, bx, by, bz, label_map, model=None):
+def save_result_to_dict(scene_dict, label, detail, bx, by, bz, label_map):
     obj_dict = {
             "location": [float(bx), float(by), float(bz)],
             "rotation": [0.0, 0.0, 0.0],  # placeholder
@@ -78,12 +79,19 @@ def save_result_to_dict(scene_dict, label, bx, by, bz, label_map, model=None):
 
     if "speedLimit" in label:
         label = label[:label.find(label.split("speedLimit")[-1])]
-    if model and model == 'lights':
-        color = label
-        label = 'traffic light'
+    # if model and model == 'lights': # WILL NEED TO UPDATE WITH NEW LIGHT DETECTION
+    #     color = label
+    #     label = 'traffic light'
 
-        print(f'\n\n{color}\n\n')
-        obj_dict["material"] = label_map[color]
+    #     print(f'\n\n{color}\n\n')
+    #     obj_dict["material"] = label_map[color]
+    if "person" in label:
+        # detail.apply_translation([bx, by, bz])
+        prev_humans = glob.glob("'./Output/humans/*.obj")
+        id = len(prev_humans)
+        file_name = f'./Output/humans/{id}.obj'
+        detail.export(file_name)
+        obj_dict["file location"] = file_name
     if label in label_map.keys():
         real_label = label_map[label]
 

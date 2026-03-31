@@ -132,7 +132,7 @@ class LaneDetector():
         return fused_viz, results
 
 
-    def convert_to_3D(self, mask, K, extrinsics):
+    def convert_to_3D(self, mask, K, extrinsics, max_dist=35.0):
         points_2d = np.argwhere(mask > 0)
         img_points = np.stack((points_2d[:, 1], points_2d[:, 0], np.ones_like(points_2d[:, 0]))).T
         norm_points = (np.linalg.inv(K)@img_points.T).T
@@ -141,7 +141,8 @@ class LaneDetector():
         safe_rays = np.where(rays[:,2] < -1e-6)
         ts = -extrinsics[2,3]/rays[safe_rays][:,[2]] # assuming Z = 0
         world_points = extrinsics[:3,3] + ts*rays[safe_rays]
-        return world_points
+
+        return world_points[world_points[:,0]<=max_dist]
 
 
     def get_lane_color(self, image, lane_mask):

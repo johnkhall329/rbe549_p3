@@ -41,6 +41,13 @@ def handle_command(cmd, client_conn):
                         lane_color = lane_info.get("color", "white")
                         lane_points = lane_info.get("curve_points", [])
                         blenderpy_utils.insert_lane(i, lane_type, lane_color, lane_points, blender_collections)
+                elif asset_name == "Pedestrain":
+                    for i, human_info in enumerate(asset_instances):
+                        loc = human_info.get("location", [0.0,0.0,0.0])
+                        rot = human_info.get("rotation", [0.0,0.0,0.0])
+                        model_path = human_info.get("file location", "")
+                        mat = human_info.get("material", None)
+                        blenderpy_utils.insert_human(loc, rot, model_path, blender_assets, material=mat)
                 else:
                     for info in asset_instances:
                         loc = info.get("location", [0.0,0.0,0.0])

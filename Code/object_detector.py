@@ -3,6 +3,8 @@ import torch
 
 import matplotlib.pyplot as plt
 import os
+import numpy as np
+import glob
 
 from ultralytics import YOLO
 
@@ -10,6 +12,13 @@ from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
 
 from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
 from accelerate import Accelerator
+
+from hmr2.configs import CACHE_DIR_4DHUMANS
+from hmr2.models import HMR2, download_models, load_hmr2, DEFAULT_CHECKPOINT
+from hmr2.utils import recursive_to
+from hmr2.datasets.vitdet_dataset import ViTDetDataset, DEFAULT_MEAN, DEFAULT_STD
+from hmr2.utils.renderer import Renderer, cam_crop_to_full
+# from hmr2.utils.preprocess import load_image
 
 class ObjectDetector():
     # model_type should be 
@@ -98,6 +107,12 @@ class ObjectDetectorGroundedDINO():
         self.processor = AutoProcessor.from_pretrained(dino_model_id)
         self.grounded_dino_model = AutoModelForZeroShotObjectDetection.from_pretrained(dino_model_id).to(self.device)
 
+        # setup ROMP
+        download_models(CACHE_DIR_4DHUMANS)
+        self.hmr2, self.hmr2_cfg = load_hmr2()
+        self.hmr2.eval()
+        self.hmr2_renderer = Renderer(self.hmr2_cfg, self.hmr2.smpl.faces)
+        os.makedirs("./Output/humans", exist_ok=True)
     
     def predict_traffic(self, image):
 
@@ -124,6 +139,10 @@ class ObjectDetectorGroundedDINO():
         return dino_result["labels"][0]
 
     def predict(self, image, format="BGR"):
+        human_objs = glob.glob("./Output/humans/*.obj") # clear previous run of human predictions
+        for obj_file in human_objs:
+            if os.path.isfile(obj_file) or os.path.islink(obj_file): os.remove(obj_file)
+
         if format == "BGR":
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
@@ -158,18 +177,44 @@ class ObjectDetectorGroundedDINO():
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             
             image_crop = image[ymin:ymax, xmin:xmax]
+            detail = self.analyze_details(image, box, label)
+            details.append(detail)
 
-            # detail = self.analyze_details(image_crop, label)
-            # details.append(detail)
-
-        # dino_result["details"] = details
+        dino_result["details"] = details
         return dino_result, dino_img
 
-    def analyze_details(self, image, label):
+    def analyze_details(self, image, box, label):
         if label == "traffic light":
-            return self.predict_traffic()
-        elif label == "person":
             pass
+            # return self.predict_traffic()
+        elif label == "person":
+            return self.detect_humans(image, box)
         elif label == "car":
             pass
         return ''
+    
+    def detect_humans(self, image, box):
+        dataset = ViTDetDataset(self.hmr2_cfg, image, box[None,:].numpy())
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=False, num_workers=0)
+
+        all_verts = []
+        all_cam_t = []
+        for batch in dataloader:
+            with torch.no_grad():
+                out = self.hmr2(batch)
+            pred_cam = out['pred_cam']
+            box_center = batch["box_center"].float()
+            box_size = batch["box_size"].float()
+            img_size = batch["img_size"].float()
+            scaled_focal_length = self.hmr2_cfg.EXTRA.FOCAL_LENGTH / self.hmr2_cfg.MODEL.IMAGE_SIZE * img_size.max()
+            pred_cam_t_full = cam_crop_to_full(pred_cam, box_center, box_size, img_size, scaled_focal_length).detach().cpu().numpy()
+            batch_size = batch['img'].shape[0]
+            for n in range(batch_size):               
+                verts = out['pred_vertices'][n].detach().cpu().numpy()
+                cam_t = pred_cam_t_full[n]
+                all_verts.append(verts)
+                all_cam_t.append(cam_t)
+
+        tmesh = self.hmr2_renderer.vertices_to_trimesh(np.vstack(all_verts), np.array([0,0,0]), (0.65098039,  0.74117647,  0.85882353))
+        mesh_low_poly = tmesh.simplify_quadric_decimation(0.8)
+        return mesh_low_poly

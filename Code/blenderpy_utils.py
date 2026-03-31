@@ -248,6 +248,21 @@ def create_instance(asset_name, location, rotation, blender_assets, blender_coll
     else:
         print(f'{asset_name} not found')
 
+def insert_human(location, rotation, model_path, blender_assets, material=None):
+    for model_name, model_info in blender_assets["Pedestrain"].items():
+        if os.path.exists(model_path):
+            bpy.ops.wm.obj_import(filepath=model_path)
+            new_inst = bpy.context.selected_objects[0]
+            new_inst.name = f"Instance_Pedestrain/{model_name}"
+            new_inst.location = [pos+offset for pos,offset in zip(location, model_info["offset"])]
+            new_inst.rotation_euler = [math.radians(rot)+math.radians(offset) for rot,offset in zip(rotation, model_info["rotation"])]
+            # if isinstance(model_info["scale"], (int,float)):
+            #     new_inst.scale = (model_info["scale"], model_info["scale"], model_info["scale"])
+            # else:
+            #     new_inst.scale = model_info["scale"]
+        else:
+            print(f"Model path not found: {model_path}")
+
 def insert_lane(lane_num, lane_type, lane_color, lane_points, blender_collections):
     name = f'Lane_{lane_type}_{lane_num}'
     curve_data = bpy.data.curves.new(name, type='CURVE')
