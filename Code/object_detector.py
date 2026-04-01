@@ -198,23 +198,25 @@ class ObjectDetectorGroundedDINO():
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=False, num_workers=0)
 
         all_verts = []
-        all_cam_t = []
+        all_keypoints = []
         for batch in dataloader:
+            patch_size = batch['img'].shape[-1] 
             with torch.no_grad():
                 out = self.hmr2(batch)
-            pred_cam = out['pred_cam']
-            box_center = batch["box_center"].float()
-            box_size = batch["box_size"].float()
-            img_size = batch["img_size"].float()
-            scaled_focal_length = self.hmr2_cfg.EXTRA.FOCAL_LENGTH / self.hmr2_cfg.MODEL.IMAGE_SIZE * img_size.max()
-            pred_cam_t_full = cam_crop_to_full(pred_cam, box_center, box_size, img_size, scaled_focal_length).detach().cpu().numpy()
             batch_size = batch['img'].shape[0]
+
             for n in range(batch_size):               
                 verts = out['pred_vertices'][n].detach().cpu().numpy()
-                cam_t = pred_cam_t_full[n]
+                k_pts = out['pred_keypoints_2d'][n]
+                keypoints_patch = (k_pts + 1.0) * (patch_size / 2.0)
+                center = batch['box_center'][n] # [N, 2]
+                size = batch['box_size'][n]     # [N] (this is the bbox_size from your code)
+                scale_factor = (size / patch_size).unsqueeze(-1).unsqueeze(-1)
+                keypoints_full = (keypoints_patch - patch_size / 2.0) * scale_factor + center
+
                 all_verts.append(verts)
-                all_cam_t.append(cam_t)
+                all_keypoints.append(keypoints_full.detach().cpu().numpy())
 
         tmesh = self.hmr2_renderer.vertices_to_trimesh(np.vstack(all_verts), np.array([0,0,0]), (0.65098039,  0.74117647,  0.85882353))
         mesh_low_poly = tmesh.simplify_quadric_decimation(0.8)
-        return mesh_low_poly
+        return mesh_low_poly, np.vstack(all_keypoints)

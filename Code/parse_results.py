@@ -87,10 +87,11 @@ def save_result_to_dict(scene_dict, label, detail, bx, by, bz, label_map):
     #     obj_dict["material"] = label_map[color]
     if "person" in label:
         # detail.apply_translation([bx, by, bz])
+        tmesh, k_pts = detail
         prev_humans = glob.glob("'./Output/humans/*.obj")
         id = len(prev_humans)
         file_name = f'./Output/humans/{id}.obj'
-        detail.export(file_name)
+        tmesh.export(file_name)
         obj_dict["file location"] = file_name
     if label in label_map.keys():
         real_label = label_map[label]
