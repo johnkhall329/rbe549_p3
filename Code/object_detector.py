@@ -89,7 +89,7 @@ class ObjectDetectorGroundedDINO():
         "stop . " \
         "garbage bin . " \
         "bicycle . " \
-        "traffic cone . " \
+        "cone . " \
         "motorcycle . " \
         "road sign . " \
         

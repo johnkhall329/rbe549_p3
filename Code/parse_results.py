@@ -33,7 +33,7 @@ LABEL_MAP_DINO = {
     "garbage bin":"trashbin",
     "bicycle": "Bicycle",
     "motorcycle": "Motorcycle",
-    "traffic cone": "TrafficConeAndCylinder"
+    "cone": "TrafficConeAndCylinder"
 }
 
 
