@@ -215,10 +215,10 @@ def create_instance(asset_name, location, rotation, blender_assets, blender_coll
                 if material is None: material = "OFF"
                 print(material)
                 set_light_state(new_inst, material)    
-                bpy.ops.object.constraint_add(type='TRACK_TO')
-                bpy.context.object.constraints["Track To"].target = bpy.data.objects["Camera"]
-                bpy.context.object.constraints["Track To"].up_axis = 'UP_Y'
-                bpy.context.object.constraints["Track To"].track_axis = 'TRACK_X'
+                # bpy.ops.object.constraint_add(type='TRACK_TO')
+                # bpy.context.object.constraints["Track To"].target = bpy.data.objects["Camera"]
+                # bpy.context.object.constraints["Track To"].up_axis = 'UP_Y'
+                # bpy.context.object.constraints["Track To"].track_axis = 'TRACK_X'
     elif asset_name in blender_collections:
         master_col = bpy.data.collections.get(asset_name)
         if not master_col:

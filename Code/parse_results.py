@@ -57,8 +57,12 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
         #         cv2.circle(draw_img, pt, 2, (0,0,255), -1)
         #     cv2.imshow('person', draw_img)
         #     cv2.waitKey(1)
+            x_center, y_center = kpts[8]
+            blender_x, blender_y, blender_z = locate_3D_point(z_depth, x_center, y_center, K, extrinsics)
+            blender_z = 0
             print('person')
  
+
         contin = True
         if abs(blender_x) > 30:
             if label == "traffic light":

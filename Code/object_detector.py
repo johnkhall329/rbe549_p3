@@ -199,6 +199,7 @@ class ObjectDetectorGroundedDINO():
 
         all_verts = []
         all_keypoints = []
+        all_3d_keypoints = []
         for batch in dataloader:
             patch_size = batch['img'].shape[-1] 
             with torch.no_grad():
@@ -208,6 +209,7 @@ class ObjectDetectorGroundedDINO():
             for n in range(batch_size):               
                 verts = out['pred_vertices'][n].detach().cpu().numpy()
                 k_pts = out['pred_keypoints_2d'][n]
+                k_pts_3d = out['pred_keypoints_3d'][n].detach().cpu().numpy()
                 # keypoints_patch = k_pts * (patch_size / 2.0)
                 center = batch['box_center'][n] # [N, 2]
                 size = batch['box_size'][n]     # [N] (this is the bbox_size from your code)
@@ -216,13 +218,18 @@ class ObjectDetectorGroundedDINO():
 
                 all_verts.append(verts)
                 all_keypoints.append(keypoints_full.detach().cpu().numpy())
+                all_3d_keypoints.append(k_pts_3d)
 
-        tmesh = self.hmr2_renderer.vertices_to_trimesh(np.vstack(all_verts), np.array([0,0,0]), (0.65098039,  0.74117647,  0.85882353))
+        all_verts = np.vstack(all_verts)
+        all_keypoints = np.vstack(all_keypoints)
+        all_3d_keypoints = np.vstack(all_3d_keypoints)
+        min_y = all_verts.max(axis=0)[1]
+        tmesh = self.hmr2_renderer.vertices_to_trimesh(all_verts, np.array([0,-min_y,0]))
         mesh_low_poly = tmesh.simplify_quadric_decimation(0.8)
         draw_img = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        for pt in np.vstack(all_keypoints):
+        for pt in all_keypoints:
             cv2.circle(draw_img, pt.astype(np.int64), 2, (0,0,255), -1)
-        cv2.circle(draw_img, all_keypoints[0][8].astype(np.int64), 2, (255,0,0), -1)
+        cv2.circle(draw_img, all_keypoints[8].astype(np.int64), 2, (255,0,0), -1)
         cv2.imshow('draw_img', draw_img)
         cv2.waitKey(1)
-        return mesh_low_poly, np.vstack(all_keypoints)
+        return mesh_low_poly, all_keypoints
