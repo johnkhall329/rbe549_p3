@@ -37,7 +37,7 @@ LABEL_MAP_DINO = {
 }
 
 
-def save_dino_results_to_json(object_detection_results, depth_results, lane_results, args, K):
+def save_dino_results_to_json(object_detection_results, depth_results, lane_results, args, K, extrinsics):
     scene_objects = {}
 
     for box, score, label in zip(object_detection_results["boxes"], object_detection_results["scores"], object_detection_results["labels"]):
@@ -47,8 +47,8 @@ def save_dino_results_to_json(object_detection_results, depth_results, lane_resu
         
         z_depth = depth_results[ymin:ymax, xmin:xmax].mean()
 
-        x, y, z = locate_3D_point(z_depth, x_center, y_center, K)
-        blender_y, blender_z, blender_x = -x/1.7, y*0.0, z/1.7
+        blender_x, blender_y, blender_z = locate_3D_point(z_depth, x_center, y_center, K, extrinsics)/1.7
+        blender_z = 0 # not using this right now
  
         contin = True
         if abs(blender_x) > 30:
@@ -94,7 +94,7 @@ def save_result_to_dict(scene_dict, label, bx, by, bz, label_map, model=None):
 
 
 
-def save_yolo_results_to_json(object_detection_results, depth_results, lane_results, args, K):
+def save_yolo_results_to_json(object_detection_results, depth_results, lane_results, args, K, extrinsics):
 
     scene_objects = {}
     extra_classes = ['stop sign', 'traffic light'] # add other classes to skip in yolo26
@@ -118,7 +118,9 @@ def save_yolo_results_to_json(object_detection_results, depth_results, lane_resu
             # find depth
             z_depth = depth_results[y1:y2, x1:x2].mean()
 
-            x, y, z = locate_3D_point(z_depth, x_center, y_center, K)
+            x, y, z = locate_3D_point_old(z_depth, x_center, y_center, K)
+            x, y, z = locate_3D_point(z_depth, x_center, y_center, K, extrinsics)
+
             blender_y, blender_z, blender_x = -x/2, y*0.0, z/2
 
             # store if in bounds
@@ -142,7 +144,24 @@ def save_yolo_results_to_json(object_detection_results, depth_results, lane_resu
     with open("Code/temp_scene.json", "w") as f:
         json.dump(scene_objects, f, indent=4)
 
-def locate_3D_point(depth, u, v, K, max_depth=20):
+def locate_3D_point(depth, u, v, K, extrinsics, max_depth=20):
+    K_inv = np.linalg.inv(K)
+    
+    # Create homogeneous pixel vector
+    pixel_coords = np.array([u, v, 1.0])
+    
+    # Back-project to normalized coordinates (z=1)
+    normalized_coords = K_inv @ pixel_coords
+
+    # rotate according to extrinsics
+    rn_coords = extrinsics[:3,:3] @ normalized_coords
+    
+    # Scale by depth to get coordinates in meters
+    world_coords_m = (rn_coords * depth) + extrinsics[:3, 3]
+    
+    return world_coords_m
+
+def locate_3D_point_old(depth, u, v, K, max_depth=20):
     K_inv = np.linalg.inv(K)
     
     # Create homogeneous pixel vector

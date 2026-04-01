@@ -116,7 +116,7 @@ def main(args):
             lanes_im, lane_results = lane_detector.detect(frame, K, extrinsics)
 
             # save_yolo_results_to_json(object_results, depth_im, lane_results, args, K)
-            save_dino_results_to_json(object_results, depth_im, lane_results, args, K)
+            save_dino_results_to_json(object_results, depth_im, lane_results, args, K, extrinsics)
 
             # plt.imsave(f'Output/output{frame_i}_bounded.jpg', annotated_img)
             # plt.imsave(f'Output/output{frame_i}_gdino.jpg', dino_img)
