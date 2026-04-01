@@ -38,7 +38,7 @@ LABEL_MAP_DINO = {
 }
 
 
-def save_dino_results_to_json(object_detection_results, depth_results, lane_results, args, K, extrinsics):
+def save_dino_results_to_json(image, object_detection_results, depth_results, lane_results, args, K, extrinsics):
     scene_objects = {}
 
     for box, score, label, detail in zip(object_detection_results["boxes"], object_detection_results["scores"], object_detection_results["labels"], object_detection_results["details"]):
@@ -48,8 +48,16 @@ def save_dino_results_to_json(object_detection_results, depth_results, lane_resu
         
         z_depth = depth_results[ymin:ymax, xmin:xmax].mean()
 
-        blender_x, blender_y, blender_z = locate_3D_point(z_depth, x_center, y_center, K, extrinsics)/1.7
+        blender_x, blender_y, blender_z = locate_3D_point(z_depth, x_center, y_center, K, extrinsics)
         blender_z = 0 # not using this right now
+        if label=="person":
+            kpts = detail[1].astype(np.int64)
+        #     draw_img = image.copy()
+        #     for pt in kpts:
+        #         cv2.circle(draw_img, pt, 2, (0,0,255), -1)
+        #     cv2.imshow('person', draw_img)
+        #     cv2.waitKey(1)
+            print('person')
  
         contin = True
         if abs(blender_x) > 30:

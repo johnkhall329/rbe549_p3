@@ -208,15 +208,21 @@ class ObjectDetectorGroundedDINO():
             for n in range(batch_size):               
                 verts = out['pred_vertices'][n].detach().cpu().numpy()
                 k_pts = out['pred_keypoints_2d'][n]
-                keypoints_patch = (k_pts + 1.0) * (patch_size / 2.0)
+                # keypoints_patch = k_pts * (patch_size / 2.0)
                 center = batch['box_center'][n] # [N, 2]
                 size = batch['box_size'][n]     # [N] (this is the bbox_size from your code)
-                scale_factor = (size / patch_size).unsqueeze(-1).unsqueeze(-1)
-                keypoints_full = (keypoints_patch - patch_size / 2.0) * scale_factor + center
+                # scale_factor = (size / patch_size).unsqueeze(-1).unsqueeze(-1)
+                keypoints_full = k_pts*size + center
 
                 all_verts.append(verts)
                 all_keypoints.append(keypoints_full.detach().cpu().numpy())
 
         tmesh = self.hmr2_renderer.vertices_to_trimesh(np.vstack(all_verts), np.array([0,0,0]), (0.65098039,  0.74117647,  0.85882353))
         mesh_low_poly = tmesh.simplify_quadric_decimation(0.8)
+        draw_img = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        for pt in np.vstack(all_keypoints):
+            cv2.circle(draw_img, pt.astype(np.int64), 2, (0,0,255), -1)
+        cv2.circle(draw_img, all_keypoints[0][8].astype(np.int64), 2, (255,0,0), -1)
+        cv2.imshow('draw_img', draw_img)
+        cv2.waitKey(1)
         return mesh_low_poly, np.vstack(all_keypoints)
