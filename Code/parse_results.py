@@ -3,6 +3,8 @@ import json
 import numpy as np
 import cv2
 import os
+import math
+
 
 LABEL_MAP_YOLO = {
     "car": "SedanAndHatchback",
@@ -40,14 +42,14 @@ LABEL_MAP_DINO = {
 def save_dino_results_to_json(object_detection_results, depth_results, lane_results, args, K, extrinsics):
     scene_objects = {}
 
-    for box, score, label in zip(object_detection_results["boxes"], object_detection_results["scores"], object_detection_results["labels"]):
+    for box, score, label, details in zip(object_detection_results["boxes"], object_detection_results["scores"], object_detection_results["labels"], object_detection_results["details"]):
         xmin, ymin, xmax, ymax = map(int, box.tolist())
 
         x_center, y_center = ((xmax + xmin)//2), ((ymax + ymin)//2)
         
         z_depth = depth_results[ymin:ymax, xmin:xmax].mean()
 
-        blender_x, blender_y, blender_z = locate_3D_point(z_depth, x_center, y_center, K, extrinsics)/1.7
+        blender_x, blender_y, blender_z = locate_3D_point(z_depth, x_center, y_center, K, extrinsics)
         blender_z = 0 # not using this right now
  
         contin = True
@@ -61,88 +63,37 @@ def save_dino_results_to_json(object_detection_results, depth_results, lane_resu
             contin = False
 
         if contin:
-            save_result_to_dict(scene_objects, label.strip(), blender_x, blender_y, blender_z, label_map=LABEL_MAP_DINO)
+            if "speedLimit" in label:
+                label = label[:label.find(label.split("speedLimit")[-1])]
 
-    if len(lane_results) > 0:
-        scene_objects["Lanes"] = lane_results
-
-    with open("Code/temp_scene.json", "w") as f:
-        json.dump(scene_objects, f, indent=4)
-
-
-def save_result_to_dict(scene_dict, label, bx, by, bz, label_map, model=None):
-    obj_dict = {
-            "location": [float(bx), float(by), float(bz)],
-            "rotation": [0.0, 0.0, 0.0],  # placeholder
-        }
-
-    if "speedLimit" in label:
-        label = label[:label.find(label.split("speedLimit")[-1])]
-    if model and model == 'lights':
-        color = label
-        label = 'traffic light'
-
-        print(f'\n\n{color}\n\n')
-        obj_dict["material"] = label_map[color]
-    if label in label_map.keys():
-        real_label = label_map[label]
-
-        if real_label not in scene_dict.keys():
-            scene_dict[real_label] = []
-
-        scene_dict[real_label].append(obj_dict)
-
-
-
-def save_yolo_results_to_json(object_detection_results, depth_results, lane_results, args, K, extrinsics):
-
-    scene_objects = {}
-    extra_classes = ['stop sign', 'traffic light'] # add other classes to skip in yolo26
-
-    for model, model_results in object_detection_results.items():
-        for box in model_results.boxes:
-
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            x_center, y_center, _, _ = map(int, box.xywh[0])
-            cls = int(box.cls[0])
-            label = model_results.names[cls]
-            if model == 'yolo26' and label in extra_classes: 
+            if label not in LABEL_MAP_DINO.keys():
                 continue
-            # elif model == 'lisa':
-            #     print(f'\n\n{label}\n\n')
-            
 
-            # if label == 'traffic light':
-            #     hsv_slider(model_results)
+            if details != '' and details.split()[0] == 'orientation:':
+                rot_val = float(details.split()[1])
+                rot_val = -(90 + math.degrees(rot_val))
+                rotation = [0.0, 0.0, rot_val]
+            else:
+                rotation = [0.0, 0.0, 0.0]
 
-            # find depth
-            z_depth = depth_results[y1:y2, x1:x2].mean()
+            obj_dict = {
+                "location": [float(blender_x), float(blender_y), float(blender_z)],
+                "rotation": rotation,  # placeholder
+            }
 
-            x, y, z = locate_3D_point_old(z_depth, x_center, y_center, K)
-            x, y, z = locate_3D_point(z_depth, x_center, y_center, K, extrinsics)
+            real_label = LABEL_MAP_DINO[label]
 
-            blender_y, blender_z, blender_x = -x/2, y*0.0, z/2
+            if real_label not in scene_objects.keys():
+                scene_objects[real_label] = []
 
-            # store if in bounds
-            contin = True
-            if abs(blender_x) > 35:
-                if label == "traffic light":
-                    blender_x = 35
-                else:
-                    contin = False
+            scene_objects[real_label].append(obj_dict)
 
-            if abs(blender_y) > 30:
-                contin = False
-
-            if contin:
-                save_result_to_dict(scene_objects, label, blender_x, blender_y, blender_z, label_map=LABEL_MAP_YOLO, model=model)
-                
     if len(lane_results) > 0:
         scene_objects["Lanes"] = lane_results
 
-    
     with open("Code/temp_scene.json", "w") as f:
         json.dump(scene_objects, f, indent=4)
+
 
 def locate_3D_point(depth, u, v, K, extrinsics, max_depth=20):
     K_inv = np.linalg.inv(K)

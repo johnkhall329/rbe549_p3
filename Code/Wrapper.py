@@ -10,7 +10,7 @@ import numpy as np
 
 
 from parse_video import *
-from parse_results import save_yolo_results_to_json, save_dino_results_to_json
+from parse_results import save_dino_results_to_json
 from depth_predictor import DepthPredictor
 from object_detector import ObjectDetector, ObjectDetectorGroundedDINO
 from lane_detector import LaneDetector
@@ -95,6 +95,26 @@ def main(args):
     pitch = 0.01
     r = np.array([[1, 0, 0],[0, np.cos(pitch), -np.sin(pitch)],[0,np.sin(pitch), np.cos(pitch)]])
     extrinsics[:3,:3] = extrinsics[:3,:3] @ r
+
+    save = True
+    if save:
+        save_path = os.path.join(args.data_path, 'Calib', 'front', 'calibration.txt')
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+        extrinsics_for_disp = np.array([[1.0,0,0,0], # identity idk why lol
+                            [0,1.0,0,0], 
+                            [0,0,1.0,0.0]]) 
+        
+        proj_matrix = K @ extrinsics_for_disp
+        proj_flattened = proj_matrix.flatten()
+
+        line_content = "P_rect_02: " + " ".join(map(str, proj_flattened))
+
+        with open(save_path, 'w') as f:
+            f.write(line_content + '\n')
+    
+        print(f"Calibration saved successfully to: {save_path}")
+        
 
     s = None
     process = None

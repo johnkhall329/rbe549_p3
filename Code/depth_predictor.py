@@ -23,7 +23,7 @@ class DepthPredictor():
     def __init__(self):
         encoder = 'vitl' # or 'vits', 'vitb'
         dataset = 'vkitti' # 'hypersim' for indoor model, 'vkitti' for outdoor model
-        max_depth = 80 # 20 for indoor model, 80 for outdoor model
+        max_depth = 40 # 20 for indoor model, 80 for outdoor model
 
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 

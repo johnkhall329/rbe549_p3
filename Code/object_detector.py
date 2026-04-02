@@ -11,6 +11,8 @@ from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
 from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
 from accelerate import Accelerator
 
+from orientation_detection import detect3d
+
 class ObjectDetector():
     # model_type should be 
     def __init__(self, model_name="yolo26n.pt"):
@@ -146,6 +148,10 @@ class ObjectDetectorGroundedDINO():
         dino_img = image.copy()
         details = []
         for box, score, label in zip(dino_result["boxes"], dino_result["scores"], dino_result["labels"]):
+            # fix double labels
+            if label.split()[0] in {"sedan", "hatchback", "suv", "truck", "bicycle"}:
+                label = label.split()[0]
+
             # Convert box to integers
             xmin, ymin, xmax, ymax = map(int, box.tolist())
             
@@ -157,19 +163,23 @@ class ObjectDetectorGroundedDINO():
             cv2.putText(dino_img, label_text, (xmin, ymin - 10), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             
-            image_crop = image[ymin:ymax, xmin:xmax]
+            bounds = [(xmin, ymin), (xmax, ymax)]
 
-            # detail = self.analyze_details(image_crop, label)
-            # details.append(detail)
+            detail = self.analyze_details(image, bounds, label)
+            details.append(detail)
 
-        # dino_result["details"] = details
+        dino_result["details"] = details
         return dino_result, dino_img
 
-    def analyze_details(self, image, label):
+    def analyze_details(self, image, bounds, label):
+        image_crop = image[bounds[0][0]:bounds[0][1], bounds[0][0]:bounds[0][1]]
+
         if label == "traffic light":
+            return ''
             return self.predict_traffic()
         elif label == "person":
             pass
-        elif label == "car":
-            pass
+        elif label in {"sedan", "hatchback", "suv", "truck", "bicycle"}:
+            return f"orientation: {detect3d(image, bounds, label)}"
+            
         return ''
