@@ -18,3 +18,10 @@ https://github.com/NicholasCG/GLARE_Dataset
 
 YOLOv8 for traffic light detection Phase 1:
 https://github.com/Syazvinski/Traffic-Light-Detection-Color-Classification/ 
+
+Orientation Detection Module:
+https://github.com/ruhyadi/YOLO3D
+
+Pedestrian Pose Detection:
+https://github.com/shubham-goel/4D-Humans
+https://github.com/sampepose/smpl_models/blob/master/SMPL_NEUTRAL.pkl

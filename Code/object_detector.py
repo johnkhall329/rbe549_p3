@@ -3,6 +3,8 @@ import torch
 
 import matplotlib.pyplot as plt
 import os
+import numpy as np
+import glob
 
 from ultralytics import YOLO
 
@@ -12,6 +14,13 @@ from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
 from accelerate import Accelerator
 
 from orientation_detection import detect3d
+
+from hmr2.configs import CACHE_DIR_4DHUMANS
+from hmr2.models import HMR2, download_models, load_hmr2, DEFAULT_CHECKPOINT
+from hmr2.utils import recursive_to
+from hmr2.datasets.vitdet_dataset import ViTDetDataset, DEFAULT_MEAN, DEFAULT_STD
+from hmr2.utils.renderer import Renderer, cam_crop_to_full
+# from hmr2.utils.preprocess import load_image
 
 class ObjectDetector():
     # model_type should be 
@@ -100,6 +109,12 @@ class ObjectDetectorGroundedDINO():
         self.processor = AutoProcessor.from_pretrained(dino_model_id)
         self.grounded_dino_model = AutoModelForZeroShotObjectDetection.from_pretrained(dino_model_id).to(self.device)
 
+        # setup ROMP
+        download_models(CACHE_DIR_4DHUMANS)
+        self.hmr2, self.hmr2_cfg = load_hmr2()
+        self.hmr2.eval()
+        self.hmr2_renderer = Renderer(self.hmr2_cfg, self.hmr2.smpl.faces)
+        os.makedirs("./Output/humans", exist_ok=True)
     
     def predict_traffic(self, image):
 
@@ -126,6 +141,10 @@ class ObjectDetectorGroundedDINO():
         return dino_result["labels"][0]
 
     def predict(self, image, format="BGR"):
+        human_objs = glob.glob("./Output/humans/*.obj") # clear previous run of human predictions
+        for obj_file in human_objs:
+            if os.path.isfile(obj_file) or os.path.islink(obj_file): os.remove(obj_file)
+
         if format == "BGR":
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
@@ -163,23 +182,64 @@ class ObjectDetectorGroundedDINO():
             cv2.putText(dino_img, label_text, (xmin, ymin - 10), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             
-            bounds = [(xmin, ymin), (xmax, ymax)]
-
-            detail = self.analyze_details(image, bounds, label)
+            detail = self.analyze_details(image, box, label)
             details.append(detail)
 
         dino_result["details"] = details
         return dino_result, dino_img
+    
 
-    def analyze_details(self, image, bounds, label):
-        image_crop = image[bounds[0][0]:bounds[0][1], bounds[0][0]:bounds[0][1]]
-
+    def analyze_details(self, image, box, label):
         if label == "traffic light":
             return ''
             return self.predict_traffic()
         elif label == "person":
-            pass
+            return self.detect_humans(image, box)
         elif label in {"sedan", "hatchback", "suv", "truck", "bicycle"}:
+            xmin, ymin, xmax, ymax = map(int, box.tolist())
+            bounds = [(xmin, ymin), (xmax, ymax)]
             return f"orientation: {detect3d(image, bounds, label)}"
             
         return ''
+
+
+    def detect_humans(self, image, box):
+        dataset = ViTDetDataset(self.hmr2_cfg, image, box[None,:].numpy())
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=False, num_workers=0)
+
+        all_verts = []
+        all_keypoints = []
+        all_3d_keypoints = []
+        for batch in dataloader:
+            patch_size = batch['img'].shape[-1] 
+            with torch.no_grad():
+                out = self.hmr2(batch)
+            batch_size = batch['img'].shape[0]
+
+            for n in range(batch_size):               
+                verts = out['pred_vertices'][n].detach().cpu().numpy()
+                k_pts = out['pred_keypoints_2d'][n]
+                k_pts_3d = out['pred_keypoints_3d'][n].detach().cpu().numpy()
+                # keypoints_patch = k_pts * (patch_size / 2.0)
+                center = batch['box_center'][n] # [N, 2]
+                size = batch['box_size'][n]     # [N] (this is the bbox_size from your code)
+                # scale_factor = (size / patch_size).unsqueeze(-1).unsqueeze(-1)
+                keypoints_full = k_pts*size + center
+
+                all_verts.append(verts)
+                all_keypoints.append(keypoints_full.detach().cpu().numpy())
+                all_3d_keypoints.append(k_pts_3d)
+
+        all_verts = np.vstack(all_verts)
+        all_keypoints = np.vstack(all_keypoints)
+        all_3d_keypoints = np.vstack(all_3d_keypoints)
+        min_y = all_verts.max(axis=0)[1]
+        tmesh = self.hmr2_renderer.vertices_to_trimesh(all_verts, np.array([0,-min_y,0]))
+        mesh_low_poly = tmesh.simplify_quadric_decimation(0.8)
+        draw_img = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        for pt in all_keypoints:
+            cv2.circle(draw_img, pt.astype(np.int64), 2, (0,0,255), -1)
+        cv2.circle(draw_img, all_keypoints[8].astype(np.int64), 2, (255,0,0), -1)
+        # cv2.imshow('draw_img', draw_img)
+        cv2.waitKey(1)
+        return mesh_low_poly, all_keypoints

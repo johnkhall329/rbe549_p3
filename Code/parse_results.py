@@ -5,6 +5,7 @@ import cv2
 import os
 import math
 
+import glob
 
 LABEL_MAP_YOLO = {
     "car": "SedanAndHatchback",
@@ -39,10 +40,10 @@ LABEL_MAP_DINO = {
 }
 
 
-def save_dino_results_to_json(object_detection_results, depth_results, lane_results, args, K, extrinsics):
+def save_dino_results_to_json(image, object_detection_results, depth_results, lane_results, args, K, extrinsics):
     scene_objects = {}
 
-    for box, score, label, details in zip(object_detection_results["boxes"], object_detection_results["scores"], object_detection_results["labels"], object_detection_results["details"]):
+    for box, score, label, detail in zip(object_detection_results["boxes"], object_detection_results["scores"], object_detection_results["labels"], object_detection_results["details"]):
         xmin, ymin, xmax, ymax = map(int, box.tolist())
 
         x_center, y_center = ((xmax + xmin)//2), ((ymax + ymin)//2)
@@ -51,7 +52,19 @@ def save_dino_results_to_json(object_detection_results, depth_results, lane_resu
 
         blender_x, blender_y, blender_z = locate_3D_point(z_depth, x_center, y_center, K, extrinsics)
         blender_z = 0 # not using this right now
+        if label=="person":
+            kpts = detail[1].astype(np.int64)
+        #     draw_img = image.copy()
+        #     for pt in kpts:
+        #         cv2.circle(draw_img, pt, 2, (0,0,255), -1)
+        #     cv2.imshow('person', draw_img)
+        #     cv2.waitKey(1)
+            x_center, y_center = kpts[8]
+            blender_x, blender_y, blender_z = locate_3D_point(z_depth, x_center, y_center, K, extrinsics)
+            blender_z = 0
+            print('person')
  
+
         contin = True
         if abs(blender_x) > 30:
             if label == "traffic light":
@@ -63,27 +76,33 @@ def save_dino_results_to_json(object_detection_results, depth_results, lane_resu
             contin = False
 
         if contin:
-            if "speedLimit" in label:
-                label = label[:label.find(label.split("speedLimit")[-1])]
-
             if label not in LABEL_MAP_DINO.keys():
                 continue
 
-            if details != '' and details.split()[0] == 'orientation:':
-                rot_val = float(details.split()[1])
+            obj_dict = {"location": [float(blender_x), float(blender_y), float(blender_z)]}
+
+            if "speedLimit" in label:
+                label = label[:label.find(label.split("speedLimit")[-1])]
+
+            if "person" in label:
+                # detail.apply_translation([bx, by, bz])
+                tmesh, k_pts = detail
+                prev_humans = glob.glob("'./Output/humans/*.obj")
+                id = len(prev_humans)
+                file_name = f'./Output/humans/{id}.obj'
+                tmesh.export(file_name)
+                obj_dict["file location"] = file_name
+
+            if detail != '' and isinstance(detail,str) and detail.split()[0] == 'orientation:':
+                rot_val = float(detail.split()[1])
                 rot_val = math.degrees(rot_val)
                 for degree in range(-360, 361, 90):
                     if abs(rot_val - degree) < 10:
                         rot_val = degree
                 rot_val = -(90 + rot_val)
-                rotation = [0.0, 0.0, rot_val]
+                obj_dict["rotation"] = [0.0, 0.0, rot_val]
             else:
-                rotation = [0.0, 0.0, 0.0]
-
-            obj_dict = {
-                "location": [float(blender_x), float(blender_y), float(blender_z)],
-                "rotation": rotation,  # placeholder
-            }
+                obj_dict["rotation"] = [0.0, 0.0, 0.0]
 
             real_label = LABEL_MAP_DINO[label]
 

@@ -136,16 +136,15 @@ def main(args):
             lanes_im, lane_results = lane_detector.detect(frame, K, extrinsics)
 
             # save_yolo_results_to_json(object_results, depth_im, lane_results, args, K)
-            save_dino_results_to_json(object_results, depth_im, lane_results, args, K, extrinsics)
+            save_dino_results_to_json(frame, object_results, depth_im, lane_results, args, K, extrinsics)
 
             # plt.imsave(f'Output/output{frame_i}_bounded.jpg', annotated_img)
             # plt.imsave(f'Output/output{frame_i}_gdino.jpg', dino_img)
             # plt.imsave(f'Output/output{frame_i}_depth.jpg', depth_im)
             # plt.imsave(f'Output/output{frame_i}_lanes.jpg', cv2.cvtColor(lanes, cv2.COLOR_BGR2RGB))
-
-            # cv2.imshow('frame', cv2.cvtColor(annotated_imgs, cv2.COLOR_RGB2BGR))
+            # cv2.imshow('frame', cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR))
             # cv2.imshow('frame', frame)
-            # cv2.waitKey(1)
+            cv2.waitKey(1)
             # do detections
 
             # save to json
