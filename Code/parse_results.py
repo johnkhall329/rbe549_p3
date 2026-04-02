@@ -71,7 +71,11 @@ def save_dino_results_to_json(object_detection_results, depth_results, lane_resu
 
             if details != '' and details.split()[0] == 'orientation:':
                 rot_val = float(details.split()[1])
-                rot_val = -(90 + math.degrees(rot_val))
+                rot_val = math.degrees(rot_val)
+                for degree in range(-360, 361, 90):
+                    if abs(rot_val - degree) < 10:
+                        rot_val = degree
+                rot_val = -(90 + rot_val)
                 rotation = [0.0, 0.0, rot_val]
             else:
                 rotation = [0.0, 0.0, 0.0]

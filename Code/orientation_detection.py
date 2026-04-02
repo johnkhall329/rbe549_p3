@@ -134,7 +134,7 @@ def detect3d(
             os.mkdir(output_path)
         except:
             pass
-        cv2.imwrite(f'{output_path}/{0:03d}.png', img)
+        cv2.imwrite(f'{output_path}/orientation_disp.png', img)
 
 
     return alpha + theta_ray
