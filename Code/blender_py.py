@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import json
+import numpy as np
 
 # 1. ADD CURRENT DIRECTORY TO PATH SO BLENDER CAN IMPORT THE OTHER FILES
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -38,9 +39,14 @@ def handle_command(cmd, client_conn):
                 if asset_name == 'Lanes':
                     for i, lane_info in enumerate(asset_instances):
                         lane_type = lane_info.get("type", "solid-line")
-                        lane_color = lane_info.get("color", "white")
-                        lane_points = lane_info.get("curve_points", [])
-                        blenderpy_utils.insert_lane(i, lane_type, lane_color, lane_points, blender_collections)
+                        if lane_type == "road-sign-line":
+                            box = np.array(lane_info.get("box", np.zeros((4,2))))
+                            file_path = lane_info.get("file_loc", "")
+                            blenderpy_utils.insert_road_sign(box, file_path)
+                        else:
+                            lane_color = lane_info.get("color", "white")
+                            lane_points = lane_info.get("curve_points", [])
+                            blenderpy_utils.insert_lane(i, lane_type, lane_color, lane_points, blender_collections)
                 elif asset_name == "Pedestrain":
                     for i, human_info in enumerate(asset_instances):
                         loc = human_info.get("location", [0.0,0.0,0.0])

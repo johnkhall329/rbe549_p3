@@ -133,6 +133,9 @@ class LaneDetector():
                 min_x, min_y, _ = mask_3d.min(axis=0)
                 max_x, max_y, _ = mask_3d.max(axis=0)
 
+                if np.hypot(min_x, min_y) > 15: # ignore ground arrows too far away or else they appear very messed up
+                    continue
+
                 box_3d = np.array([[max_x, max_y, 0],
                                    [min_x, min_y, 0], 
                                    [min_x, max_y, 0],
@@ -151,6 +154,10 @@ class LaneDetector():
                 
                 M = cv2.getPerspectiveTransform(reproj_box, img_box)
                 warped_img = cv2.warpPerspective(mask, M, (int(w), int(new_h)))
+
+                trans_idx = np.where(warped_img!=255) 
+                warped_img = cv2.cvtColor(warped_img, cv2.COLOR_GRAY2BGRA)
+                warped_img[trans_idx[0], trans_idx[1], 3] = 0
 
                 save_name = f'./Output/road_signs/road_sign_{i}.png'
                 cv2.imwrite(save_name, warped_img)

@@ -291,6 +291,48 @@ def insert_lane(lane_num, lane_type, lane_color, lane_points, blender_collection
     curve_data.bevel_depth = 0.04 # Thickness in meters
     curve_data.use_fill_caps = True
 
+def insert_road_sign(box, file_loc):
+    file_name = file_loc.split('.')[0]
+    name = file_name.split('_')[-1]
+    center = box.mean(axis=0)
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(center[0], center[1], 0.01))
+    plane = bpy.context.active_object
+    plane.name = f"Instance_{name}road_sign"
+    w, h, _ = box[1]-box[0]
+    plane.scale = (h, w, 1)
+    plane.rotation_euler = [0,0,math.radians(90)]
+    bpy.ops.object.transform_apply(scale=True)
+
+    # 2. Create a new material
+    mat = bpy.data.materials.new(name=f"Road_sign_{name}_Material")
+    mat.use_nodes = True
+    plane.data.materials.append(mat)
+    
+    # Set blend mode for EEVEE/Viewport transparency
+    mat.blend_method = 'BLEND' 
+    if hasattr(mat, "eevee"):
+        # This is likely the missing link for your black background
+        mat.eevee.use_transparent_shadow = True 
+        # For Blender 4.2+, the property is often:
+        if hasattr(mat.eevee, "shadow_method"):
+            mat.eevee.shadow_method = 'HASHED'
+
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    
+    # Clear default nodes for a clean slate
+    bsdf = nodes.get("Principled BSDF")
+    
+    # 3. Add Image Texture Node
+    tex_node = nodes.new(type='ShaderNodeTexImage')
+    tex_node.image = bpy.data.images.load(file_loc)
+    
+    # 4. Link Texture to BSDF
+    # Link Color -> Base Color
+    links.new(tex_node.outputs['Color'], bsdf.inputs['Base Color'])
+    # Link Alpha -> Alpha (This enables the transparency)
+    links.new(tex_node.outputs['Alpha'], bsdf.inputs['Alpha'])
+
 def render_scene(output_path):
     """
     Renders the current scene and saves it as a PNG.
