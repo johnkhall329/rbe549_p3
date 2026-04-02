@@ -52,7 +52,10 @@ class LaneDetector():
         self.max_blob_size = 500
         self.yellow_thresh = 140
 
+        os.makedirs('./Output/road_signs', exist_ok=True)
+
     def detect(self, image, K, extrinsics):
+        clear_road_signs()
         orig_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         h, w,_ = image.shape
         image = self.transform(orig_image.copy())
@@ -118,6 +121,42 @@ class LaneDetector():
                     blender_points = sample_curve(curve_model, world_points[in_idxs])
                     results.append({'type': winner_class, 'color': lane_color, 'curve_points': blender_points.tolist()})
 
+        i=0
+        for mask_lane, box, label in zip(masks, boxes, labels):
+            if label == CLASS_NAMES[5]:
+                mask = mask_lane.astype(np.uint8)*255
+                box.append((box[0][0],box[1][1]))
+                box.append((box[1][0], box[0][1]))
+                box = np.array(box, dtype=np.float32)
+                w, h = box[1] - box[0]
+                mask_3d = self.convert_to_3D(mask, K, extrinsics)
+                min_x, min_y, _ = mask_3d.min(axis=0)
+                max_x, max_y, _ = mask_3d.max(axis=0)
+
+                box_3d = np.array([[max_x, max_y, 0],
+                                   [min_x, min_y, 0], 
+                                   [min_x, max_y, 0],
+                                   [max_x, min_y, 0]])
+                rvec, _ = cv2.Rodrigues(extrinsics[:,:3].T)
+                t = -extrinsics[:,:3].T@extrinsics[:,3]
+                reproj_box, _ = cv2.projectPoints(box_3d, rvec, t, K, np.zeros(5))
+                reproj_box = reproj_box.reshape(-1,2).astype(np.float32)
+                aspect_ratio = (max_x-min_x)/(max_y-min_y)
+
+                new_h = w*aspect_ratio
+                img_box = np.array([[0,0],
+                                    [int(w), int(new_h)],
+                                    [0, int(new_h)],
+                                    [int(w), 0]], dtype=np.float32)
+                
+                M = cv2.getPerspectiveTransform(reproj_box, img_box)
+                warped_img = cv2.warpPerspective(mask, M, (int(w), int(new_h)))
+
+                save_name = f'./Output/road_signs/road_sign_{i}.png'
+                cv2.imwrite(save_name, warped_img)
+                patch_info = {'type': 'road-sign-line', 'box': box_3d.tolist(), 'file_loc': save_name}
+                results.append(patch_info)
+                i+=1
         # result = np.array(result)
         # blank = np.zeros_like(orig_image)
         # for mask in masks:
@@ -330,3 +369,8 @@ def ransac_curve(world_points, max_iter = 100, threshold = 0.15, early_exit = 0.
         return final_model, best_inliers
     
     return None, []
+
+def clear_road_signs():
+    road_imgs = glob.glob("./Output/road_signs/*") # clear previous run of human predictions
+    for img_file in road_imgs:
+        if os.path.isfile(img_file) or os.path.islink(img_file): os.remove(img_file)
