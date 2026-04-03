@@ -42,7 +42,7 @@ def handle_command(cmd, client_conn):
                         if lane_type == "road-sign-line":
                             box = np.array(lane_info.get("box", np.zeros((4,2))))
                             file_path = lane_info.get("file_loc", "")
-                            blenderpy_utils.insert_road_sign(box, file_path)
+                            blenderpy_utils.insert_road_arrow(box, file_path)
                         else:
                             lane_color = lane_info.get("color", "white")
                             lane_points = lane_info.get("curve_points", [])
@@ -54,6 +54,12 @@ def handle_command(cmd, client_conn):
                         model_path = human_info.get("file location", "")
                         mat = human_info.get("material", None)
                         blenderpy_utils.insert_human(loc, rot, model_path, blender_assets, material=mat)
+                elif asset_name == "SpeedLimitSign":
+                    for sign_info in asset_instances:
+                        loc = sign_info.get("location", [0.0,0.0,0.0])
+                        rot = sign_info.get("rotation", [0.0,0.0,0.0])
+                        speed = sign_info.get("speed", "")
+                        blenderpy_utils.insert_speed_sign(loc, rot, speed, blender_collections)
                 else:
                     for info in asset_instances:
                         loc = info.get("location", [0.0,0.0,0.0])

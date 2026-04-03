@@ -30,7 +30,7 @@ LABEL_MAP_DINO = {
     "fire hydrant": "fire",
     "stop sign": "StopSign",
     "stop": "StopSign",
-    "speed limit sign": "SpeedLimitSign",
+    "speed limit": "SpeedLimitSign",
     "garbage bin":"trashbin",
     "bicycle": "Bicycle",
     "motorcycle": "Motorcycle",
@@ -89,8 +89,14 @@ def save_result_to_dict(scene_dict, label, detail, bx, by, bz, label_map):
             "rotation": [0.0, 0.0, 0.0],  # placeholder
         }
 
-    if "speedLimit" in label:
-        label = label[:label.find(label.split("speedLimit")[-1])]
+    if "road sign" in label:
+        sign_type = detail.get("type", None)
+        if sign_type is None: pass
+        if sign_type == 'stop':
+            label = 'stop'
+        elif sign_type == 'speed limit':
+            label = 'speed limit'
+            obj_dict["speed"] = detail.get("speed", "")
     # if model and model == 'lights': # WILL NEED TO UPDATE WITH NEW LIGHT DETECTION
     #     color = label
     #     label = 'traffic light'

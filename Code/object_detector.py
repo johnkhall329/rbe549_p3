@@ -1,5 +1,7 @@
 import cv2
 import torch
+import torchvision
+import re
 
 import matplotlib.pyplot as plt
 import os
@@ -12,6 +14,8 @@ from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
 
 from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
 from accelerate import Accelerator
+
+import easyocr
 
 from hmr2.configs import CACHE_DIR_4DHUMANS
 from hmr2.models import HMR2, download_models, load_hmr2, DEFAULT_CHECKPOINT
@@ -94,25 +98,30 @@ class ObjectDetectorGroundedDINO():
         "box truck . " \
         "SUV . " \
         "fire hydrant . " \
-        "stop sign . " \
-        "stop . " \
         "garbage bin . " \
         "bicycle . " \
         "cone . " \
         "motorcycle . " \
         "road sign . " \
         
+        # "stopsign . " \
+        # "stop . " \
         self.dino_traffic_labels = "circular light . asymmetric light . green . yellow . red . triangular light . left arrow light . diamond light . 3 . non-circular light . chevron light . left leaning light ."
 
         self.processor = AutoProcessor.from_pretrained(dino_model_id)
         self.grounded_dino_model = AutoModelForZeroShotObjectDetection.from_pretrained(dino_model_id).to(self.device)
 
-        # setup ROMP
+        # setup 4D Humans
         download_models(CACHE_DIR_4DHUMANS)
         self.hmr2, self.hmr2_cfg = load_hmr2()
         self.hmr2.eval()
         self.hmr2_renderer = Renderer(self.hmr2_cfg, self.hmr2.smpl.faces)
         os.makedirs("./Output/humans", exist_ok=True)
+
+        self.reader = easyocr.Reader(['en'])
+
+        # lisa_path = os.path.join(model_dir, 'last.pt')
+        self.lisa_model = YOLO("./Models/last.pt")
     
     def predict_traffic(self, image):
 
@@ -164,6 +173,8 @@ class ObjectDetectorGroundedDINO():
 
         dino_img = image.copy()
         details = []
+        if any(l == 'road sign' for l in dino_result["labels"]):
+            lisa_results = self.lisa_model(image)[0]
         for box, score, label in zip(dino_result["boxes"], dino_result["scores"], dino_result["labels"]):
             # Convert box to integers
             xmin, ymin, xmax, ymax = map(int, box.tolist())
@@ -177,13 +188,13 @@ class ObjectDetectorGroundedDINO():
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             
             image_crop = image[ymin:ymax, xmin:xmax]
-            detail = self.analyze_details(image, box, label)
+            detail = self.analyze_details(image, box, label, lisa_results)
             details.append(detail)
 
         dino_result["details"] = details
         return dino_result, dino_img
 
-    def analyze_details(self, image, box, label):
+    def analyze_details(self, image, box, label, lisa_results):
         if label == "traffic light":
             pass
             # return self.predict_traffic()
@@ -191,6 +202,27 @@ class ObjectDetectorGroundedDINO():
             return self.detect_humans(image, box)
         elif label == "car":
             pass
+        elif label == 'road sign':
+            xmin, ymin, xmax, ymax = map(int, box.tolist())
+            crop = cv2.cvtColor(image[ymin:ymax, xmin:xmax], cv2.COLOR_RGB2BGR)
+            text = self.reader.readtext(crop, detail=0)
+            for lisa_box in lisa_results.boxes:
+                iou = torchvision.ops.box_iou(box.detach().cpu(), lisa_box.xyxy.detach().cpu())
+                if iou > 0.5:
+                    lisa_cls = lisa_results.names[int(lisa_box.cls[0])]
+                    if "speedLimit" in lisa_cls:
+                        integer_list = []
+                        for t in text:
+                            numbers = re.findall(r'\d+', t)
+                            integer_list += [int(n) for n in numbers]
+                        if len(integer_list) >0:
+                            speed = np.max(integer_list)
+                            return {"type": "speed limit", "speed": str(speed)}
+                        
+                    if "stop" in lisa_cls.lower():
+                        if any('stop' in t.lower() for t in text):
+                            return {"type": "stop"}
+            return {}
         return ''
     
     def detect_humans(self, image, box):
@@ -226,10 +258,10 @@ class ObjectDetectorGroundedDINO():
         min_y = all_verts.max(axis=0)[1]
         tmesh = self.hmr2_renderer.vertices_to_trimesh(all_verts, np.array([0,-min_y,0]))
         mesh_low_poly = tmesh.simplify_quadric_decimation(0.8)
-        draw_img = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        for pt in all_keypoints:
-            cv2.circle(draw_img, pt.astype(np.int64), 2, (0,0,255), -1)
-        cv2.circle(draw_img, all_keypoints[8].astype(np.int64), 2, (255,0,0), -1)
-        cv2.imshow('draw_img', draw_img)
-        cv2.waitKey(1)
+        # draw_img = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        # for pt in all_keypoints:
+        #     cv2.circle(draw_img, pt.astype(np.int64), 2, (0,0,255), -1)
+        # cv2.circle(draw_img, all_keypoints[8].astype(np.int64), 2, (255,0,0), -1)
+        # cv2.imshow('draw_img', draw_img)
+        # cv2.waitKey(1)
         return mesh_low_poly, all_keypoints

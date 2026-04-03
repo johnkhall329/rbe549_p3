@@ -291,20 +291,20 @@ def insert_lane(lane_num, lane_type, lane_color, lane_points, blender_collection
     curve_data.bevel_depth = 0.04 # Thickness in meters
     curve_data.use_fill_caps = True
 
-def insert_road_sign(box, file_loc):
+def insert_road_arrow(box, file_loc):
     file_name = file_loc.split('.')[0]
     name = file_name.split('_')[-1]
     center = box.mean(axis=0)
     bpy.ops.mesh.primitive_plane_add(size=1, location=(center[0], center[1], 0.01))
     plane = bpy.context.active_object
-    plane.name = f"Instance_{name}road_sign"
+    plane.name = f"Instance_{name}_road_arrow"
     w, h, _ = box[1]-box[0]
     plane.scale = (h, w, 1)
     plane.rotation_euler = [0,0,math.radians(90)]
     bpy.ops.object.transform_apply(scale=True)
 
     # 2. Create a new material
-    mat = bpy.data.materials.new(name=f"Road_sign_{name}_Material")
+    mat = bpy.data.materials.new(name=f"Road_arrow_{name}_Material")
     mat.use_nodes = True
     plane.data.materials.append(mat)
     
@@ -332,6 +332,43 @@ def insert_road_sign(box, file_loc):
     links.new(tex_node.outputs['Color'], bsdf.inputs['Base Color'])
     # Link Alpha -> Alpha (This enables the transparency)
     links.new(tex_node.outputs['Alpha'], bsdf.inputs['Alpha'])
+
+def insert_speed_sign(location, rotation, speed, blender_collections):
+    master_col = bpy.data.collections.get("SpeedLimitSign")
+    if not master_col:
+        print("SpeedLimitSign not found in collection")
+        return None
+
+    # 1. Create an 'Empty' object
+    instance_name = f"Instance_{"SpeedLimitSign"}"
+    instance_empty = bpy.data.objects.new(instance_name, None)
+    
+    # 2. Tell the Empty to 'Instance' the collection
+    instance_empty.instance_type = 'COLLECTION'
+    instance_empty.instance_collection = master_col
+    
+    # 3. Place it in the scene
+    bpy.context.scene.collection.objects.link(instance_empty)
+    
+    # instance_empty.location = [pos+offset for pos,offset in zip(location, blender_collections[asset_name]["offset"])]   
+    instance_empty.location = location       
+    instance_empty.rotation_euler = [math.radians(rot)+math.radians(offset) for rot,offset in zip(rotation, blender_collections["SpeedLimitSign"]["rotation"])]
+    if isinstance(blender_collections["SpeedLimitSign"]["scale"], (int,float)):
+        instance_empty.scale = (blender_collections["SpeedLimitSign"]["scale"], blender_collections["SpeedLimitSign"]["scale"], blender_collections["SpeedLimitSign"]["scale"])
+    else:
+        instance_empty.scale = blender_collections["SpeedLimitSign"]["scale"]
+    
+    for obj in instance_empty.instance_collection.objects:
+        if obj.type == 'FONT' and "Speed_Value_Text" in obj.name:
+            
+            # 3. CRITICAL: To have different speeds on different signs,
+            # we must "Override" the library data for this instance.
+            # If you don't do this, changing one sign changes ALL signs.
+            
+            # Make the text object local to this instance
+            obj.data = obj.data.copy() 
+            obj.data.body = str(speed)
+            break
 
 def render_scene(output_path):
     """

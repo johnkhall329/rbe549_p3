@@ -36,8 +36,8 @@
     }, 
 
     "SpeedLimitSign":{
-        "Object":{
-            "sign_25mph_sign_25mph":{
+        "Collection":{
+            "SpeedLimitSign":{
                 "scale": 0.75,
                 "offset":[0.0,0.0,0.0],
                 "rotation":[0.0,0.0,-90.0]
