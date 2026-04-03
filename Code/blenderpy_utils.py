@@ -24,6 +24,17 @@ def clear_scene(protected_assets):
             # do_unlink=True removes it from all collections
             bpy.data.objects.remove(obj, do_unlink=True)
             
+    for col in bpy.data.collections[:]:
+        # We named these "Instance_Sign_..." in the previous step
+        if col.name.startswith("Instance_"):
+            
+            # Delete all objects inside this specific collection
+            for obj in col.objects[:]:
+                bpy.data.objects.remove(obj, do_unlink=True)
+            
+            # Remove the collection itself from the scene
+            bpy.data.collections.remove(col)
+
     # Optional: Clean up orphaned mesh data to save RAM
     # This removes the "mesh" data-blocks that no longer have an object using them
     # But it won't touch your Master assets because they are linked to your Library
@@ -333,42 +344,45 @@ def insert_road_arrow(box, file_loc):
     # Link Alpha -> Alpha (This enables the transparency)
     links.new(tex_node.outputs['Alpha'], bsdf.inputs['Alpha'])
 
-def insert_speed_sign(location, rotation, speed, blender_collections):
+def insert_speed_sign(name, location, rotation, speed, blender_collections):
     master_col = bpy.data.collections.get("SpeedLimitSign")
-    if not master_col:
-        print("SpeedLimitSign not found in collection")
-        return None
+    
+    # 1. Create a new collection for THIS specific sign to keep it organized
+    instance_col = bpy.data.collections.new(f"Instance_Sign_{speed}_{name}")
+    bpy.context.scene.collection.children.link(instance_col)
+    
+    new_text_obj = None
+    main_mesh = None
 
-    # 1. Create an 'Empty' object
-    instance_name = f"Instance_{"SpeedLimitSign"}"
-    instance_empty = bpy.data.objects.new(instance_name, None)
-    
-    # 2. Tell the Empty to 'Instance' the collection
-    instance_empty.instance_type = 'COLLECTION'
-    instance_empty.instance_collection = master_col
-    
-    # 3. Place it in the scene
-    bpy.context.scene.collection.objects.link(instance_empty)
-    
-    # instance_empty.location = [pos+offset for pos,offset in zip(location, blender_collections[asset_name]["offset"])]   
-    instance_empty.location = location       
-    instance_empty.rotation_euler = [math.radians(rot)+math.radians(offset) for rot,offset in zip(rotation, blender_collections["SpeedLimitSign"]["rotation"])]
-    if isinstance(blender_collections["SpeedLimitSign"]["scale"], (int,float)):
-        instance_empty.scale = (blender_collections["SpeedLimitSign"]["scale"], blender_collections["SpeedLimitSign"]["scale"], blender_collections["SpeedLimitSign"]["scale"])
-    else:
-        instance_empty.scale = blender_collections["SpeedLimitSign"]["scale"]
-    
-    for obj in instance_empty.instance_collection.objects:
-        if obj.type == 'FONT' and "Speed_Value_Text" in obj.name:
-            
-            # 3. CRITICAL: To have different speeds on different signs,
-            # we must "Override" the library data for this instance.
-            # If you don't do this, changing one sign changes ALL signs.
-            
-            # Make the text object local to this instance
-            obj.data = obj.data.copy() 
-            obj.data.body = str(speed)
-            break
+    # 2. Duplicate the objects from the master collection
+    for original_obj in master_col.objects:
+        new_obj = original_obj.copy()
+        new_obj.data = original_obj.data.copy() # Make data unique!
+        instance_col.objects.link(new_obj)
+        
+        # 3. Handle the Text
+        if new_obj.type == 'FONT':
+            new_obj.data.body = str(speed)
+            new_text_obj = new_obj
+        else:
+            main_mesh = new_obj
+
+    # 4. Transform the group
+    # Note: If they were parented in the master, they stay parented here.
+    # We move the 'Parent' (the mesh) and the child (text) follows.
+    if main_mesh and new_text_obj:
+
+        new_text_obj.location = (0, -0.045, 1.4432)
+        new_text_obj.rotation_euler = (math.radians(90), 0, 0)
+
+        new_text_obj.parent = main_mesh
+        new_text_obj.matrix_parent_inverse = main_mesh.matrix_world.inverted()
+        main_mesh.location = location
+        main_mesh.rotation_euler = [math.radians(rot)+math.radians(offset) for rot,offset in zip(rotation, blender_collections["SpeedLimitSign"]["rotation"])]
+        # if isinstance(blender_collections["SpeedLimitSign"]["scale"], (int,float)):
+        #     main_mesh.scale = (blender_collections["SpeedLimitSign"]["scale"], blender_collections["SpeedLimitSign"]["scale"], blender_collections["SpeedLimitSign"]["scale"])
+        # else:
+        #     main_mesh.scale = blender_collections["SpeedLimitSign"]["scale"]
 
 def render_scene(output_path):
     """

@@ -55,11 +55,11 @@ def handle_command(cmd, client_conn):
                         mat = human_info.get("material", None)
                         blenderpy_utils.insert_human(loc, rot, model_path, blender_assets, material=mat)
                 elif asset_name == "SpeedLimitSign":
-                    for sign_info in asset_instances:
+                    for i, sign_info in enumerate(asset_instances):
                         loc = sign_info.get("location", [0.0,0.0,0.0])
                         rot = sign_info.get("rotation", [0.0,0.0,0.0])
                         speed = sign_info.get("speed", "")
-                        blenderpy_utils.insert_speed_sign(loc, rot, speed, blender_collections)
+                        blenderpy_utils.insert_speed_sign(i, loc, rot, speed, blender_collections)
                 else:
                     for info in asset_instances:
                         loc = info.get("location", [0.0,0.0,0.0])

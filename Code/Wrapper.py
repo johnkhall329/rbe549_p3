@@ -122,9 +122,9 @@ def main(args):
             # plt.imsave(f'Output/output{frame_i}_gdino.jpg', dino_img)
             # plt.imsave(f'Output/output{frame_i}_depth.jpg', depth_im)
             # plt.imsave(f'Output/output{frame_i}_lanes.jpg', cv2.cvtColor(lanes, cv2.COLOR_BGR2RGB))
-            cv2.imshow('frame', cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR))
+            # cv2.imshow('frame', cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR))
             # cv2.imshow('frame', frame)
-            cv2.waitKey(1)
+            # cv2.waitKey(1)
             # do detections
 
             # save to json
@@ -175,7 +175,7 @@ def configParser():
     parser.add_argument('--stride', default=100, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
-    parser.add_argument('--headless', default=True)
+    parser.add_argument('--headless', default=False)
     return parser
 
 if __name__ == "__main__":
