@@ -135,7 +135,6 @@ def main(args):
 
             blender_frame = cv2.imread(f"./Output/{args.sequence}.png")
 
-
             bounded_bgr = cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR)
             bounded_h, bounded_w = bounded_bgr.shape[:2]
 
@@ -175,7 +174,7 @@ def configParser():
     parser.add_argument('--stride', default=100, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
-    parser.add_argument('--headless', default=False)
+    parser.add_argument('--headless', default=True)
     return parser
 
 if __name__ == "__main__":

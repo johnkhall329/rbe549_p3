@@ -130,6 +130,7 @@ class LaneDetector():
                 box = np.array(box, dtype=np.float32)
                 w, h = box[1] - box[0]
                 mask_3d = self.convert_to_3D(mask, K, extrinsics)
+                if len(mask_3d) == 0: continue
                 min_x, min_y, _ = mask_3d.min(axis=0)
                 max_x, max_y, _ = mask_3d.max(axis=0)
 
