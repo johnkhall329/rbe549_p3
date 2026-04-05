@@ -173,9 +173,12 @@ class ObjectDetectorGroundedDINO():
 
         dino_img = image.copy()
         details = []
-        if any(l == 'road sign' for l in dino_result["labels"]):
+        if any(l == 'road sign' for l in dino_result["text_labels"]):
             lisa_results = self.lisa_model(image)[0]
-        for box, score, label in zip(dino_result["boxes"], dino_result["scores"], dino_result["labels"]):
+        else:
+            lisa_results = None
+        check_overlap = any('motorcycle' in l or 'bicycle' in l for l in dino_result["text_labels"])            
+        for box, score, label in zip(dino_result["boxes"], dino_result["scores"], dino_result["text_labels"]):
             # Convert box to integers
             xmin, ymin, xmax, ymax = map(int, box.tolist())
             
@@ -189,6 +192,16 @@ class ObjectDetectorGroundedDINO():
             
             image_crop = image[ymin:ymax, xmin:xmax]
             detail = self.analyze_details(image, box, label, lisa_results)
+            if check_overlap and label == 'person':
+                best_iou = 0.0
+                overlap_i = None
+                for i, box2, label2 in zip(range(len(dino_result["boxes"])), dino_result["boxes"], dino_result["text_labels"]):
+                    if 'motorcycle' in label2 or 'bicycle' in label2:
+                        iou = torchvision.ops.box_iou(box.detach().cpu()[None,:], box2.detach().cpu()[None,:])
+                        if iou > 0.25 and iou>best_iou:
+                            best_iou = iou
+                            overlap_i = i
+                if overlap_i is not None: detail.append(overlap_i)
             details.append(detail)
 
         dino_result["details"] = details
@@ -264,4 +277,4 @@ class ObjectDetectorGroundedDINO():
         # cv2.circle(draw_img, all_keypoints[8].astype(np.int64), 2, (255,0,0), -1)
         # cv2.imshow('draw_img', draw_img)
         # cv2.waitKey(1)
-        return mesh_low_poly, all_keypoints
+        return [mesh_low_poly, all_keypoints]

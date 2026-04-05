@@ -41,7 +41,7 @@ LABEL_MAP_DINO = {
 def save_dino_results_to_json(image, object_detection_results, depth_results, lane_results, args, K, extrinsics):
     scene_objects = {}
 
-    for box, score, label, detail in zip(object_detection_results["boxes"], object_detection_results["scores"], object_detection_results["labels"], object_detection_results["details"]):
+    for box, score, label, detail in zip(object_detection_results["boxes"], object_detection_results["scores"], object_detection_results["text_labels"], object_detection_results["details"]):
         xmin, ymin, xmax, ymax = map(int, box.tolist())
 
         x_center, y_center = ((xmax + xmin)//2), ((ymax + ymin)//2)
@@ -51,13 +51,18 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
         blender_x, blender_y, blender_z = locate_3D_point(z_depth, x_center, y_center, K, extrinsics)
         blender_z = 0 # not using this right now
         if label=="person":
-            kpts = detail[1].astype(np.int64)
-        #     draw_img = image.copy()
-        #     for pt in kpts:
-        #         cv2.circle(draw_img, pt, 2, (0,0,255), -1)
-        #     cv2.imshow('person', draw_img)
-        #     cv2.waitKey(1)
-            x_center, y_center = kpts[8]
+            if len(detail) == 2:
+                kpts = detail[1].astype(np.int64)
+                x_center, y_center = kpts[8]
+            else:
+                other_box_idx = detail[2]
+                other_box = object_detection_results["boxes"][other_box_idx]
+                xmin, ymin, xmax, ymax = map(int, other_box.tolist())
+
+                x_center, y_center = ((xmax + xmin)//2), ((ymax + ymin)//2)
+                
+                z_depth = depth_results[ymin:ymax, xmin:xmax].mean()
+
             blender_x, blender_y, blender_z = locate_3D_point(z_depth, x_center, y_center, K, extrinsics)
             blender_z = 0
             print('person')
@@ -105,7 +110,7 @@ def save_result_to_dict(scene_dict, label, detail, bx, by, bz, label_map):
     #     obj_dict["material"] = label_map[color]
     if "person" in label:
         # detail.apply_translation([bx, by, bz])
-        tmesh, k_pts = detail
+        tmesh, k_pts = detail[:2]
         prev_humans = glob.glob("'./Output/humans/*.obj")
         id = len(prev_humans)
         file_name = f'./Output/humans/{id}.obj'
