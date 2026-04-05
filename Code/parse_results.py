@@ -119,6 +119,17 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                         
                     if 'arrow' in shape:
                         shape_name = "ARROW"
+                        if 'up' in shape:
+                            shape_name += '_U'
+                        elif 'down' in shape:
+                            shape_name += '_D'
+                        elif 'right' in shape:
+                            shape_name += '_R'
+                        elif 'left' in shape:
+                            shape_name += '_L'
+                        else:
+                            print('WARNING: direction labeling is incorrect in traffic signal')
+
                     elif 'circle' in shape:
                         shape_name = "ON"
                     else:
@@ -132,7 +143,7 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                         scene_objects[real_label] = []
 
                     for i in range(2):
-                        y_offset = -0.2 + 0.4*i
+                        y_offset = -0.32 + 0.64*i
                         color = detail[f'light_{i}']['color']
                         shape = detail[f'light_{i}']['shape']
 
@@ -141,6 +152,18 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                         
                         if 'arrow' in shape:
                             shape_name = "ARROW"
+                            if 'up' in shape:
+                                shape_name += '_U'
+                            elif 'down' in shape:
+                                shape_name += '_D'
+                            elif 'right' in shape:
+                                shape_name += '_R'
+                            elif 'left' in shape:
+                                shape_name += '_L'
+                            else:
+                                print('WARNING: direction labeling is incorrect in traffic signal')
+
+
                         elif 'circle' in shape:
                             shape_name = "ON"
                         else:

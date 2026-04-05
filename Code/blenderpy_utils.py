@@ -92,17 +92,32 @@ def preload_assets(asset_folder, asset_info):
     off = create_traffic_material("Lens_Off", "grey.png", asset_folder)
     traffic_library = {
         "RED_ON": [create_traffic_material("Red_Circle", "red.png", asset_folder),off,off],
-        "RED_ARROW": [create_traffic_material("Red_Arrow", "red_arrow.png", asset_folder),off,off],
         "YELLOW_ON": [off, create_traffic_material("Yellow_Circle", "yellow.png", asset_folder),off,],
-        "YELLOW_ARROW": [off, create_traffic_material("Yellow_Arrow", "yellow_arrow.png", asset_folder),off],
         "GREEN_ON": [off,off,create_traffic_material("Green_Circle", "green.png", asset_folder)],
-        "GREEN_ARROW": [off,off,create_traffic_material("Green_Arrow", "green_arrow.png", asset_folder)],
         "OFF": [off,off,off]
         # ... etc for all 9
     }
+    
+    colors = ["Red_Arrow", "Yellow_Arrow", "Green_Arrow"]
+    directions = ["_L", "_U", "_R", "_D"]
+    rotation_nums = [0, 90, 180, 270]
+    for color in colors:
+        for dir, degrees in zip(directions, rotation_nums):
+            lab = color.upper() + dir
+            mat = create_traffic_material((color + dir), (color.lower() + ".png"), asset_folder, rotation_deg=degrees)
+            if 'Red' in color:
+                traffic_library[lab] = [mat, off, off]
+            elif 'Yellow' in color:
+                traffic_library[lab] = [off, mat, off]
+            elif 'Green' in color:
+                traffic_library[lab] = [off, off, mat]
+            else:
+                print("WARNING: color naming is not working properly")
+            
+                
     return master_assets, master_collections
 
-def create_traffic_material(name, image_name, asset_folder):
+def create_traffic_material(name, image_name, asset_folder, rotation_deg=0):
     bg_color = (0.467, 0.463, 0.482)
     # Create a new material
     mat = bpy.data.materials.new(name=name)
@@ -133,6 +148,22 @@ def create_traffic_material(name, image_name, asset_folder):
         image_path = os.path.join(asset_folder, image_name)
         if os.path.exists(image_path):
             node_tex.image = bpy.data.images.load(image_path)
+        
+        # APPLY ROTATION
+        # --- NEW: COORDINATE NODE ---
+        node_coords = nodes.new('ShaderNodeTexCoord')
+        
+        # --- MAPPING NODE ---
+        mapping_node = nodes.new('ShaderNodeMapping')
+        mapping_node.vector_type = 'POINT' # Ensure it's in Point mode
+
+        # Apply the rotation
+        mapping_node.inputs['Rotation'].default_value[2] = math.radians(rotation_deg)
+
+        # --- LINKING ---
+        # Link UVs -> Mapping -> Texture
+        links.new(node_coords.outputs['UV'], mapping_node.inputs['Vector'])
+        links.new(mapping_node.outputs['Vector'], node_tex.inputs['Vector'])
 
         # 1. MIXING THE COLORS
         links.new(node_tex.outputs['Alpha'], node_mix.inputs['Factor'])

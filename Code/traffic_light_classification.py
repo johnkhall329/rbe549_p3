@@ -15,7 +15,7 @@ def classify_light(image, box):
     w = (xmax - xmin)
     v = (ymax - ymin)
 
-    if w*v < 240:
+    if w < 10 or v < 10:
         details['qt'] = 0
         return details
 
@@ -41,7 +41,7 @@ def classify_light(image, box):
     if qt == 'square':
         template_width = min(height, width)
         
-    if qt == 'regular':
+    elif qt == 'regular':
         green_start = height - width
         yellow_start = (green_start // 2)
 
@@ -80,11 +80,11 @@ def classify_light(image, box):
             "circle_md": create_circle_template(template_width, radius=0.28),
             "circle_lg": create_circle_template(template_width, radius=0.33),
             "circle_xl": create_circle_template(template_width, radius=0.4),
-            "circle_img": template_from_img(template_width, path='template_circle.jpg'),
-            "arrow_left": template_from_img(template_width, path='template_arrow.jpg'),
-            "arrow_up": cv2.rotate(template_from_img(template_width, path='template_arrow.jpg'), cv2.ROTATE_90_CLOCKWISE),
-            "arrow_right": cv2.flip(template_from_img(template_width, path='template_arrow.jpg'), 1),
-            "arrow_down": cv2.rotate(template_from_img(template_width, path='template_arrow.jpg'), cv2.ROTATE_90_COUNTERCLOCKWISE)
+            "circle_img": template_from_img(template_width, path=CIRCLE_IMAGE_PATH),
+            "arrow_left": template_from_img(template_width, path=ARROW_IMAGE_PATH),
+            "arrow_up": cv2.rotate(template_from_img(template_width, path=ARROW_IMAGE_PATH), cv2.ROTATE_90_CLOCKWISE),
+            "arrow_right": cv2.flip(template_from_img(template_width, path=ARROW_IMAGE_PATH), 1),
+            "arrow_down": cv2.rotate(template_from_img(template_width, path=ARROW_IMAGE_PATH), cv2.ROTATE_90_COUNTERCLOCKWISE)
         }
     
     if qt == "square":
