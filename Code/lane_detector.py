@@ -116,9 +116,9 @@ class LaneDetector():
                 fused_viz = cv2.addWeighted(fused_viz, 1.0, colored_lane, 0.8, 0)
 
                 world_points = self.convert_to_3D(skel_lane, K, extrinsics)
-                curve_model, in_idxs = ransac_curve(world_points)
+                curve_model, in_idxs, x_dir = ransac_curve(world_points)
                 if curve_model is not None:
-                    blender_points = sample_curve(curve_model, world_points[in_idxs])
+                    blender_points = sample_curve(curve_model, world_points[in_idxs], x_dir)
                     results.append({'type': winner_class, 'color': lane_color, 'curve_points': blender_points.tolist()})
 
         i=0
@@ -320,30 +320,32 @@ class LaneDetector():
         color_mask = cv2.resize(color_mask, (1280, 960))
         return color_mask
     
-def sample_curve(curve_model, in_points, n_samples = 10):
+def sample_curve(curve_model, in_points, x_dir = True, n_samples = 10):
     a,b,c = curve_model
-    x_min = np.min(in_points,axis=0)[0]
-    x_max = np.max(in_points,axis=0)[0]
+    min_pts = np.min(in_points,axis=0)[0]
+    max_pts = np.max(in_points,axis=0)[0]
 
-    x_samples = np.linspace(x_min, x_max, num=n_samples, endpoint=True)
-    if x_min < 5.0:
-        x_samples = np.insert(x_samples, 0, 0.0)
-    y = a*x_samples**2 + b*x_samples + c
-    z = np.zeros_like(x_samples)
-    return np.column_stack([x_samples, y, z])
+    samples = np.linspace(min_pts, max_pts, num=n_samples, endpoint=True)
+    if min_pts < 5.0 and x_dir:
+        samples = np.insert(samples, 0, 0.0)
+    result = a*samples**2 + b*samples + c
+    z = np.zeros_like(samples)
+    output = np.column_stack([samples, result, z]) if x_dir else np.column_stack([result, samples, z])
+    return output
 
 
 
 def ransac_curve(world_points, max_iter = 100, threshold = 0.15, early_exit = 0.9, min_inliers=10):
     best_inliers = []
     best_model = None
+    x_dir = True
     
     x_pts = world_points[:, 0]
     y_pts = world_points[:, 1]
     n_points = len(x_pts)
 
     if n_points < 3:
-        return None, []
+        return None, [], True
     
     for i in range(max_iter):
         sample_idxs = np.random.choice(n_points, 3, replace=False)
@@ -351,13 +353,17 @@ def ransac_curve(world_points, max_iter = 100, threshold = 0.15, early_exit = 0.
         ys = y_pts[sample_idxs]
 
         try:
-            A = np.column_stack([xs**2, xs, np.ones(3)])
-            curve_model = np.linalg.solve(A, ys)
+            Ax = np.column_stack([xs**2, xs, np.ones(3)])
+            x_curve_model = np.linalg.solve(Ax, ys)
+
+            Ay = np.column_stack([ys**2, ys, np.ones(3)])
+            y_curve_model = np.linalg.solve(Ay, xs)
+
 
         except np.linalg.LinAlgError:
             continue
 
-        a,b,c = curve_model
+        a,b,c = x_curve_model
         y_pred = a * (x_pts**2) + b * x_pts + c
 
         distances = np.abs(y_pts-y_pred)
@@ -365,18 +371,37 @@ def ransac_curve(world_points, max_iter = 100, threshold = 0.15, early_exit = 0.
 
         if len(inlier_idxs) > len(best_inliers):
             best_inliers = inlier_idxs
-            best_model = curve_model
+            best_model = x_curve_model
+            x_dir = True
+            if len(inlier_idxs)/n_points >= early_exit:
+                break
+
+        a,b,c = y_curve_model
+        x_pred = a * (y_pts**2) + b * y_pts + c
+
+        distances = np.abs(x_pts-x_pred)
+        inlier_idxs = np.where(distances<threshold)[0]
+
+        if len(inlier_idxs) > len(best_inliers):
+            best_inliers = inlier_idxs
+            best_model = y_curve_model
+            x_dir = False
             if len(inlier_idxs)/n_points >= early_exit:
                 break
 
     if len(best_inliers) >= min_inliers:
         final_x = x_pts[best_inliers]
         final_y = y_pts[best_inliers]
-        A_final = np.column_stack([final_x**2, final_x, np.ones(len(final_x))])
-        final_model, _, _, _ = np.linalg.lstsq(A_final, final_y, rcond=None)
-        return final_model, best_inliers
+        if x_dir: 
+            A_final = np.column_stack([final_x**2, final_x, np.ones(len(final_x))])
+            final_model, _, _, _ = np.linalg.lstsq(A_final, final_y, rcond=None)
+        else:
+            A_final = np.column_stack([final_y**2, final_y, np.ones(len(final_y))])
+            final_model, _, _, _ = np.linalg.lstsq(A_final, final_x, rcond=None)
+        return final_model, best_inliers, x_dir
     
-    return None, []
+    
+    return None, [], True
 
 def clear_road_signs():
     road_imgs = glob.glob("./Output/road_signs/*") # clear previous run of human predictions
