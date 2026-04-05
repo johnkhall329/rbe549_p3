@@ -14,6 +14,7 @@ from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
 from accelerate import Accelerator
 
 from orientation_detection import detect3d
+from traffic_light_classification import classify_light
 
 from hmr2.configs import CACHE_DIR_4DHUMANS
 from hmr2.models import HMR2, download_models, load_hmr2, DEFAULT_CHECKPOINT
@@ -191,8 +192,7 @@ class ObjectDetectorGroundedDINO():
 
     def analyze_details(self, image, box, label):
         if label == "traffic light":
-            return ''
-            return self.predict_traffic()
+            return classify_light(image, box)
         elif label == "person":
             return self.detect_humans(image, box)
         elif label in {"sedan", "hatchback", "suv", "truck", "bicycle"}:

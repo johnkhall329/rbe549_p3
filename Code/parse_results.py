@@ -81,9 +81,11 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
 
             obj_dict = {"location": [float(blender_x), float(blender_y), float(blender_z)]}
 
+            # Speed Limit Parsing
             if "speedLimit" in label:
                 label = label[:label.find(label.split("speedLimit")[-1])]
 
+            # Pedestrian Pose Parsing
             if "person" in label:
                 # detail.apply_translation([bx, by, bz])
                 tmesh, k_pts = detail
@@ -93,6 +95,7 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                 tmesh.export(file_name)
                 obj_dict["file location"] = file_name
 
+            # Orientation Parsing
             if detail != '' and isinstance(detail,str) and detail.split()[0] == 'orientation:':
                 rot_val = float(detail.split()[1])
                 rot_val = math.degrees(rot_val)
@@ -103,6 +106,52 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                 obj_dict["rotation"] = [0.0, 0.0, rot_val]
             else:
                 obj_dict["rotation"] = [0.0, 0.0, 0.0]
+            
+            # Traffic Light Parsing
+            if label == 'traffic light':
+                if detail['qt'] == 0:
+                    continue
+                elif detail['qt'] == 1:
+                    color = detail['light_0']['color']
+                    shape = detail['light_0']['shape']
+                    if color == "unknown/off":
+                        continue
+                        
+                    if 'arrow' in shape:
+                        shape_name = "ARROW"
+                    elif 'circle' in shape:
+                        shape_name = "ON"
+                    else:
+                        continue
+                    
+                    obj_dict["material"] = color + shape_name
+                elif detail['qt'] == 2:
+                    real_label = LABEL_MAP_DINO[label]
+
+                    if real_label not in scene_objects.keys():
+                        scene_objects[real_label] = []
+
+                    for i in range(2):
+                        y_offset = -0.2 + 0.4*i
+                        color = detail[f'light_{i}']['color']
+                        shape = detail[f'light_{i}']['shape']
+
+                        if color == "unknown/off":
+                            continue
+                        
+                        if 'arrow' in shape:
+                            shape_name = "ARROW"
+                        elif 'circle' in shape:
+                            shape_name = "ON"
+                        else:
+                            continue
+
+                        obj_dict["material"] = color + shape_name
+                        obj_dict["location"] = [float(blender_x), float(blender_y - y_offset), float(blender_z)]
+                        scene_objects[real_label].append(obj_dict.copy())
+
+                    continue
+
 
             real_label = LABEL_MAP_DINO[label]
 
