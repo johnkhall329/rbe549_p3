@@ -3,6 +3,7 @@ ultralytics
 transformers>=4.40.0
 accelerate>=0.26.0
 <<<<<<< HEAD
+<<<<<<< HEAD
 omegaconf
 fast_simplification
 seaborn
@@ -10,3 +11,6 @@ easyocr
 =======
 rembg
 >>>>>>> template stuffs
+=======
+rembg
+>>>>>>> 99ef39caa0c64f08fa509dd971e158267fdb1c94
