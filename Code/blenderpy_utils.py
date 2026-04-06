@@ -108,6 +108,16 @@ def preload_assets(asset_folder, asset_info):
         "OFF": [off,off,off]
         # ... etc for all 9
     }
+
+    global car_mats
+    car_mats = {
+        "brake": {"base_color": "#660002FF", "emission_color": "#FF0017FF", "emission_strength": 1.0},
+        "turn_left": {"base_color": "#6F6600FF", "emission_color": "#FFEF06FF", "emission_strength": 1.0},
+        "turn_right": {"base_color": "#6F6600FF", "emission_color": "#FFEF06FF", "emission_strength": 1.0},
+        "off_light": {"base_color": "#989898FF"},
+        "stopped": {"base_color": "#B6B6B6FF"},
+        "moving": {"base_color": "#37384FFF"}
+    }
     
     colors = ["Red_Arrow", "Yellow_Arrow", "Green_Arrow"]
     directions = ["_L", "_U", "_R", "_D"]
