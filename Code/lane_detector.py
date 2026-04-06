@@ -52,7 +52,10 @@ class LaneDetector():
         self.max_blob_size = 500
         self.yellow_thresh = 140
 
+        os.makedirs('./Output/road_signs', exist_ok=True)
+
     def detect(self, image, K, extrinsics):
+        clear_road_signs()
         orig_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         h, w,_ = image.shape
         image = self.transform(orig_image.copy())
@@ -113,11 +116,55 @@ class LaneDetector():
                 fused_viz = cv2.addWeighted(fused_viz, 1.0, colored_lane, 0.8, 0)
 
                 world_points = self.convert_to_3D(skel_lane, K, extrinsics)
-                curve_model, in_idxs = ransac_curve(world_points)
+                curve_model, in_idxs, x_dir = ransac_curve(world_points)
                 if curve_model is not None:
-                    blender_points = sample_curve(curve_model, world_points[in_idxs])
+                    blender_points = sample_curve(curve_model, world_points[in_idxs], x_dir)
                     results.append({'type': winner_class, 'color': lane_color, 'curve_points': blender_points.tolist()})
 
+        i=0
+        for mask_lane, box, label in zip(masks, boxes, labels):
+            if label == CLASS_NAMES[5]:
+                mask = mask_lane.astype(np.uint8)*255
+                box.append((box[0][0],box[1][1]))
+                box.append((box[1][0], box[0][1]))
+                box = np.array(box, dtype=np.float32)
+                w, h = box[1] - box[0]
+                mask_3d = self.convert_to_3D(mask, K, extrinsics)
+                if len(mask_3d) == 0: continue
+                min_x, min_y, _ = mask_3d.min(axis=0)
+                max_x, max_y, _ = mask_3d.max(axis=0)
+
+                if np.hypot(min_x, min_y) > 15: # ignore ground arrows too far away or else they appear very messed up
+                    continue
+
+                box_3d = np.array([[max_x, max_y, 0],
+                                   [min_x, min_y, 0], 
+                                   [min_x, max_y, 0],
+                                   [max_x, min_y, 0]])
+                rvec, _ = cv2.Rodrigues(extrinsics[:,:3].T)
+                t = -extrinsics[:,:3].T@extrinsics[:,3]
+                reproj_box, _ = cv2.projectPoints(box_3d, rvec, t, K, np.zeros(5))
+                reproj_box = reproj_box.reshape(-1,2).astype(np.float32)
+                aspect_ratio = (max_x-min_x)/(max_y-min_y)
+
+                new_h = w*aspect_ratio
+                img_box = np.array([[0,0],
+                                    [int(w), int(new_h)],
+                                    [0, int(new_h)],
+                                    [int(w), 0]], dtype=np.float32)
+                
+                M = cv2.getPerspectiveTransform(reproj_box, img_box)
+                warped_img = cv2.warpPerspective(mask, M, (int(w), int(new_h)))
+
+                trans_idx = np.where(warped_img!=255) 
+                warped_img = cv2.cvtColor(warped_img, cv2.COLOR_GRAY2BGRA)
+                warped_img[trans_idx[0], trans_idx[1], 3] = 0
+
+                save_name = f'./Output/road_signs/road_sign_{i}.png'
+                cv2.imwrite(save_name, warped_img)
+                patch_info = {'type': 'road-sign-line', 'box': box_3d.tolist(), 'file_loc': save_name}
+                results.append(patch_info)
+                i+=1
         # result = np.array(result)
         # blank = np.zeros_like(orig_image)
         # for mask in masks:
@@ -273,30 +320,32 @@ class LaneDetector():
         color_mask = cv2.resize(color_mask, (1280, 960))
         return color_mask
     
-def sample_curve(curve_model, in_points, n_samples = 10):
+def sample_curve(curve_model, in_points, x_dir = True, n_samples = 10):
     a,b,c = curve_model
-    x_min = np.min(in_points,axis=0)[0]
-    x_max = np.max(in_points,axis=0)[0]
+    min_pts = np.min(in_points,axis=0)[0]
+    max_pts = np.max(in_points,axis=0)[0]
 
-    x_samples = np.linspace(x_min, x_max, num=n_samples, endpoint=True)
-    if x_min < 5.0:
-        x_samples = np.insert(x_samples, 0, 0.0)
-    y = a*x_samples**2 + b*x_samples + c
-    z = np.zeros_like(x_samples)
-    return np.column_stack([x_samples, y, z])
+    samples = np.linspace(min_pts, max_pts, num=n_samples, endpoint=True)
+    if min_pts < 5.0 and x_dir:
+        samples = np.insert(samples, 0, 0.0)
+    result = a*samples**2 + b*samples + c
+    z = np.zeros_like(samples)
+    output = np.column_stack([samples, result, z]) if x_dir else np.column_stack([result, samples, z])
+    return output
 
 
 
 def ransac_curve(world_points, max_iter = 100, threshold = 0.15, early_exit = 0.9, min_inliers=10):
     best_inliers = []
     best_model = None
+    x_dir = True
     
     x_pts = world_points[:, 0]
     y_pts = world_points[:, 1]
     n_points = len(x_pts)
 
     if n_points < 3:
-        return None, []
+        return None, [], True
     
     for i in range(max_iter):
         sample_idxs = np.random.choice(n_points, 3, replace=False)
@@ -304,13 +353,17 @@ def ransac_curve(world_points, max_iter = 100, threshold = 0.15, early_exit = 0.
         ys = y_pts[sample_idxs]
 
         try:
-            A = np.column_stack([xs**2, xs, np.ones(3)])
-            curve_model = np.linalg.solve(A, ys)
+            Ax = np.column_stack([xs**2, xs, np.ones(3)])
+            x_curve_model = np.linalg.solve(Ax, ys)
+
+            Ay = np.column_stack([ys**2, ys, np.ones(3)])
+            y_curve_model = np.linalg.solve(Ay, xs)
+
 
         except np.linalg.LinAlgError:
             continue
 
-        a,b,c = curve_model
+        a,b,c = x_curve_model
         y_pred = a * (x_pts**2) + b * x_pts + c
 
         distances = np.abs(y_pts-y_pred)
@@ -318,15 +371,39 @@ def ransac_curve(world_points, max_iter = 100, threshold = 0.15, early_exit = 0.
 
         if len(inlier_idxs) > len(best_inliers):
             best_inliers = inlier_idxs
-            best_model = curve_model
+            best_model = x_curve_model
+            x_dir = True
+            if len(inlier_idxs)/n_points >= early_exit:
+                break
+
+        a,b,c = y_curve_model
+        x_pred = a * (y_pts**2) + b * y_pts + c
+
+        distances = np.abs(x_pts-x_pred)
+        inlier_idxs = np.where(distances<threshold)[0]
+
+        if len(inlier_idxs) > len(best_inliers):
+            best_inliers = inlier_idxs
+            best_model = y_curve_model
+            x_dir = False
             if len(inlier_idxs)/n_points >= early_exit:
                 break
 
     if len(best_inliers) >= min_inliers:
         final_x = x_pts[best_inliers]
         final_y = y_pts[best_inliers]
-        A_final = np.column_stack([final_x**2, final_x, np.ones(len(final_x))])
-        final_model, _, _, _ = np.linalg.lstsq(A_final, final_y, rcond=None)
-        return final_model, best_inliers
+        if x_dir: 
+            A_final = np.column_stack([final_x**2, final_x, np.ones(len(final_x))])
+            final_model, _, _, _ = np.linalg.lstsq(A_final, final_y, rcond=None)
+        else:
+            A_final = np.column_stack([final_y**2, final_y, np.ones(len(final_y))])
+            final_model, _, _, _ = np.linalg.lstsq(A_final, final_x, rcond=None)
+        return final_model, best_inliers, x_dir
     
-    return None, []
+    
+    return None, [], True
+
+def clear_road_signs():
+    road_imgs = glob.glob("./Output/road_signs/*") # clear previous run of human predictions
+    for img_file in road_imgs:
+        if os.path.isfile(img_file) or os.path.islink(img_file): os.remove(img_file)

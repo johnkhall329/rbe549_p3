@@ -9,6 +9,7 @@ def get_images_from_scene(args):
         undist_videos_path = os.path.abspath(os.path.join(args.data_path+'Sequences/', args.sequence))
 
         image_paths = glob(undist_videos_path + "/*.jpg")
+        image_paths += glob(undist_videos_path + '/*.png')
 
 
         for path in image_paths:

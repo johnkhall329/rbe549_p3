@@ -2,3 +2,7 @@ timm
 ultralytics
 transformers>=4.40.0
 accelerate>=0.26.0
+omegaconf
+fast_simplification
+seaborn
+easyocr

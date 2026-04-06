@@ -24,6 +24,17 @@ def clear_scene(protected_assets):
             # do_unlink=True removes it from all collections
             bpy.data.objects.remove(obj, do_unlink=True)
             
+    for col in bpy.data.collections[:]:
+        # We named these "Instance_Sign_..." in the previous step
+        if col.name.startswith("Instance_"):
+            
+            # Delete all objects inside this specific collection
+            for obj in col.objects[:]:
+                bpy.data.objects.remove(obj, do_unlink=True)
+            
+            # Remove the collection itself from the scene
+            bpy.data.collections.remove(col)
+
     # Optional: Clean up orphaned mesh data to save RAM
     # This removes the "mesh" data-blocks that no longer have an object using them
     # But it won't touch your Master assets because they are linked to your Library
@@ -321,6 +332,88 @@ def insert_lane(lane_num, lane_type, lane_color, lane_points, blender_collection
     obj.data.materials.append(mat)
     curve_data.bevel_depth = 0.04 # Thickness in meters
     curve_data.use_fill_caps = True
+
+def insert_road_arrow(box, file_loc):
+    file_name = file_loc.split('.')[0]
+    name = file_name.split('_')[-1]
+    center = box.mean(axis=0)
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(center[0], center[1], 0.01))
+    plane = bpy.context.active_object
+    plane.name = f"Instance_{name}_road_arrow"
+    w, h, _ = box[1]-box[0]
+    plane.scale = (h, w, 1)
+    plane.rotation_euler = [0,0,math.radians(90)]
+    bpy.ops.object.transform_apply(scale=True)
+
+    # 2. Create a new material
+    mat = bpy.data.materials.new(name=f"Road_arrow_{name}_Material")
+    mat.use_nodes = True
+    plane.data.materials.append(mat)
+    
+    # Set blend mode for EEVEE/Viewport transparency
+    mat.blend_method = 'BLEND' 
+    if hasattr(mat, "eevee"):
+        # This is likely the missing link for your black background
+        mat.eevee.use_transparent_shadow = True 
+        # For Blender 4.2+, the property is often:
+        if hasattr(mat.eevee, "shadow_method"):
+            mat.eevee.shadow_method = 'HASHED'
+
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    
+    # Clear default nodes for a clean slate
+    bsdf = nodes.get("Principled BSDF")
+    
+    # 3. Add Image Texture Node
+    tex_node = nodes.new(type='ShaderNodeTexImage')
+    tex_node.image = bpy.data.images.load(file_loc)
+    
+    # 4. Link Texture to BSDF
+    # Link Color -> Base Color
+    links.new(tex_node.outputs['Color'], bsdf.inputs['Base Color'])
+    # Link Alpha -> Alpha (This enables the transparency)
+    links.new(tex_node.outputs['Alpha'], bsdf.inputs['Alpha'])
+
+def insert_speed_sign(name, location, rotation, speed, blender_collections):
+    master_col = bpy.data.collections.get("SpeedLimitSign")
+    
+    # 1. Create a new collection for THIS specific sign to keep it organized
+    instance_col = bpy.data.collections.new(f"Instance_Sign_{speed}_{name}")
+    bpy.context.scene.collection.children.link(instance_col)
+    
+    new_text_obj = None
+    main_mesh = None
+
+    # 2. Duplicate the objects from the master collection
+    for original_obj in master_col.objects:
+        new_obj = original_obj.copy()
+        new_obj.data = original_obj.data.copy() # Make data unique!
+        instance_col.objects.link(new_obj)
+        
+        # 3. Handle the Text
+        if new_obj.type == 'FONT':
+            new_obj.data.body = str(speed)
+            new_text_obj = new_obj
+        else:
+            main_mesh = new_obj
+
+    # 4. Transform the group
+    # Note: If they were parented in the master, they stay parented here.
+    # We move the 'Parent' (the mesh) and the child (text) follows.
+    if main_mesh and new_text_obj:
+
+        new_text_obj.location = (0, -0.045, 1.4432)
+        new_text_obj.rotation_euler = (math.radians(90), 0, 0)
+
+        new_text_obj.parent = main_mesh
+        new_text_obj.matrix_parent_inverse = main_mesh.matrix_world.inverted()
+        main_mesh.location = location
+        main_mesh.rotation_euler = [math.radians(rot)+math.radians(offset) for rot,offset in zip(rotation, blender_collections["SpeedLimitSign"]["rotation"])]
+        # if isinstance(blender_collections["SpeedLimitSign"]["scale"], (int,float)):
+        #     main_mesh.scale = (blender_collections["SpeedLimitSign"]["scale"], blender_collections["SpeedLimitSign"]["scale"], blender_collections["SpeedLimitSign"]["scale"])
+        # else:
+        #     main_mesh.scale = blender_collections["SpeedLimitSign"]["scale"]
 
 def render_scene(output_path):
     """

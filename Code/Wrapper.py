@@ -144,7 +144,7 @@ def main(args):
             # plt.imsave(f'Output/output{frame_i}_lanes.jpg', cv2.cvtColor(lanes, cv2.COLOR_BGR2RGB))
             # cv2.imshow('frame', cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR))
             # cv2.imshow('frame', frame)
-            cv2.waitKey(1)
+            # cv2.waitKey(1)
             # do detections
 
             # save to json
@@ -154,7 +154,6 @@ def main(args):
             send_and_wait(s, f"render ./Output/{args.sequence}\n")
 
             blender_frame = cv2.imread(f"./Output/{args.sequence}.png")
-
 
             bounded_bgr = cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR)
             bounded_h, bounded_w = bounded_bgr.shape[:2]
