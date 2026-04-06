@@ -28,7 +28,8 @@ LABEL_MAP_DINO = {
     "suv": "SUV",
     "person": "Pedestrain",
     "traffic light": "TrafficSignal",
-    "truck": "PickupTruck",
+    "pickup": "PickupTruck",
+    "box": "Truck",
     "fire hydrant": "fire",
     "stop sign": "StopSign",
     "stop": "StopSign",
@@ -43,7 +44,7 @@ LABEL_MAP_DINO = {
 def save_dino_results_to_json(image, object_detection_results, depth_results, lane_results, args, K, extrinsics):
     scene_objects = {}
 
-    for box, score, label, detail in zip(object_detection_results["boxes"], object_detection_results["scores"], object_detection_results["text_labels"], object_detection_results["details"]):
+    for box, score, label, detail in zip(object_detection_results["boxes"], object_detection_results["scores"], object_detection_results["new_labels"], object_detection_results["details"]):
         xmin, ymin, xmax, ymax = map(int, box.tolist())
 
         x_center, y_center = ((xmax + xmin)//2), ((ymax + ymin)//2)
@@ -69,6 +70,12 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
             blender_z = 0
             print('person')
  
+        if "road sign" in label:
+            sign_type = detail.get("type", None)
+            if sign_type == 'stop':
+                label = 'stop'
+            elif sign_type == 'speed limit':
+                label = 'speed limit'
 
         contin = True
         if abs(blender_x) > 30:
@@ -86,15 +93,7 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
 
             obj_dict = {"location": [float(blender_x), float(blender_y), float(blender_z)]}
 
-            if "road sign" in label:
-                sign_type = detail.get("type", None)
-                if sign_type is None: pass
-                if sign_type == 'stop':
-                    label = 'stop'
-                elif sign_type == 'speed limit':
-                    label = 'speed limit'
-                    obj_dict["speed"] = detail.get("speed", "")
-
+            if label == "speed limit": obj_dict["speed"] = detail.get("speed","")
             # Pedestrian Pose Parsing
             if "person" in label:
                 # detail.apply_translation([bx, by, bz])

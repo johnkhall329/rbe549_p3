@@ -179,11 +179,13 @@ class ObjectDetectorGroundedDINO():
             lisa_results = self.lisa_model(image)[0]
         else:
             lisa_results = None
-        check_overlap = any('motorcycle' in l or 'bicycle' in l for l in dino_result["text_labels"])            
+        check_overlap = any('motorcycle' in l or 'bicycle' in l for l in dino_result["text_labels"])
+        new_labels = []            
         for box, score, label in zip(dino_result["boxes"], dino_result["scores"], dino_result["text_labels"]):
             # Convert box to integers
-            if label.split()[0] in {"sedan", "hatchback", "suv", "truck", "bicycle"}:
+            if label.split()[0] in {"sedan", "hatchback", "suv", "pickup", "box", "motorcycle", "bicycle"}:
                 label = label.split()[0]
+            new_labels.append(label)
             xmin, ymin, xmax, ymax = map(int, box.tolist())
             
             # Draw rectangle (Green)
@@ -208,6 +210,7 @@ class ObjectDetectorGroundedDINO():
             details.append(detail)
 
         dino_result["details"] = details
+        dino_result["new_labels"] = new_labels
         return dino_result, dino_img
     
 
@@ -216,7 +219,7 @@ class ObjectDetectorGroundedDINO():
             return classify_light(image, box)
         elif label == "person":
             return self.detect_humans(image, box)
-        elif label in {"sedan", "hatchback", "suv", "truck", "bicycle"}:
+        elif label in {"sedan", "hatchback", "suv", "pickup", "box", "motorcycle", "bicycle"}:
             xmin, ymin, xmax, ymax = map(int, box.tolist())
             bounds = [(xmin, ymin), (xmax, ymax)]
             return f"orientation: {detect3d(image, bounds, label)}"

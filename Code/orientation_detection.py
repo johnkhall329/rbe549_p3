@@ -60,8 +60,10 @@ AVERAGES_LABEL_MAP = {
     "sedan": "car", 
     "hatchback": "car", 
     "suv": "car", 
-    "truck": "truck", 
-    "bicycle": "cyclist"
+    "box": "truck", 
+    "pickup": "truck",
+    "bicycle": "cyclist",
+    "motorcycle": "cyclist"
 }
 
 
