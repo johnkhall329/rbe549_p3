@@ -3,6 +3,7 @@ import torch
 import torchvision
 import re
 
+import easyocr
 import matplotlib.pyplot as plt
 import os
 import numpy as np
@@ -17,7 +18,7 @@ from accelerate import Accelerator
 
 from orientation_detection import detect3d
 from traffic_light_classification import classify_light
-import easyocr
+from orient_anything_detection import OrientAnythingModel
 
 from hmr2.configs import CACHE_DIR_4DHUMANS
 from hmr2.models import HMR2, download_models, load_hmr2, DEFAULT_CHECKPOINT
@@ -108,8 +109,8 @@ class ObjectDetectorGroundedDINO():
         
         # "stopsign . " \
         # "stop . " \
-        self.dino_traffic_labels = "circular light . asymmetric light . green . yellow . red . triangular light . left arrow light . diamond light . 3 . non-circular light . chevron light . left leaning light ."
-
+        # self.dino_traffic_labels = "circular light . asymmetric light . green . yellow . red . triangular light . left arrow light . diamond light . 3 . non-circular light . chevron light . left leaning light ."
+        
         self.processor = AutoProcessor.from_pretrained(dino_model_id)
         self.grounded_dino_model = AutoModelForZeroShotObjectDetection.from_pretrained(dino_model_id).to(self.device)
 
@@ -124,6 +125,9 @@ class ObjectDetectorGroundedDINO():
 
         # lisa_path = os.path.join(model_dir, 'last.pt')
         self.lisa_model = YOLO("./Models/last.pt")
+
+        # Orient Anything
+        self.orient_anything_model = OrientAnythingModel(device='cpu')
     
     def predict_traffic(self, image):
 
@@ -182,10 +186,11 @@ class ObjectDetectorGroundedDINO():
         check_overlap = any('motorcycle' in l or 'bicycle' in l for l in dino_result["text_labels"])
         new_labels = []            
         for box, score, label in zip(dino_result["boxes"], dino_result["scores"], dino_result["text_labels"]):
-            # Convert box to integers
-            if label.split()[0] in {"sedan", "hatchback", "suv", "pickup", "box", "motorcycle", "bicycle"}:
+            # parse labels that G-DINO says is two words
+            if label.split()[0] in {"sedan", "hatchback", "suv", "pickup", "box", "motorcycle", "bicycle", "truck"}:
                 label = label.split()[0]
             new_labels.append(label)
+            # Convert box to integers
             xmin, ymin, xmax, ymax = map(int, box.tolist())
             
             # Draw rectangle (Green)
@@ -219,16 +224,17 @@ class ObjectDetectorGroundedDINO():
             return classify_light(image, box)
         elif label == "person":
             return self.detect_humans(image, box)
-        elif label in {"sedan", "hatchback", "suv", "pickup", "box", "motorcycle", "bicycle"}:
+        elif label in {"sedan", "hatchback", "suv", "pickup", "truck", "box", "motorcycle", "bicycle"}:
             xmin, ymin, xmax, ymax = map(int, box.tolist())
             bounds = [(xmin, ymin), (xmax, ymax)]
-            return f"orientation: {detect3d(image, bounds, label)}"
+            # return f"orientation: {detect3d(image, bounds, label)}"
+            return f"orientation: {self.orient_anything_model.predict(image[ymin:ymax, xmin:xmax])}"
         elif label == 'road sign':
             xmin, ymin, xmax, ymax = map(int, box.tolist())
             crop = cv2.cvtColor(image[ymin:ymax, xmin:xmax], cv2.COLOR_RGB2BGR)
             text = self.reader.readtext(crop, detail=0)
             for lisa_box in lisa_results.boxes:
-                iou = torchvision.ops.box_iou(box.detach().cpu(), lisa_box.xyxy.detach().cpu())
+                iou = torchvision.ops.box_iou(box.detach().cpu().unsqueeze(0), lisa_box.xyxy.detach().cpu())
                 if iou > 0.5:
                     lisa_cls = lisa_results.names[int(lisa_box.cls[0])]
                     if "speedLimit" in lisa_cls:

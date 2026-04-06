@@ -26,7 +26,7 @@ CLASS_NAMES = [
 COLORS = np.random.uniform(0, 255, size=(len(CLASS_NAMES), 3))
 
 class LaneDetector():
-    def __init__(self):
+    def __init__(self, device=None):
         self.transform = transforms.Compose([
             transforms.ToTensor()
         ])
@@ -42,7 +42,10 @@ class LaneDetector():
         ckpt = torch.load("./Models/model_15.pth", weights_only=False)
         self.model.load_state_dict(ckpt['model'])
         # set the computation device
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        if not device:
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        else:
+            self.device = device
         # load the modle on to the computation device and set to eval mode
         self.model.to(self.device).eval()
 

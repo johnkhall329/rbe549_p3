@@ -73,7 +73,7 @@ def main(args):
 
     object_detector = ObjectDetectorGroundedDINO()
 
-    lane_detector = LaneDetector()
+    lane_detector = LaneDetector(device='cpu')
     os.makedirs("./Output", exist_ok=True)
     asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))
     # cmd = [os.path.expanduser("~")+args.blender_path, 
