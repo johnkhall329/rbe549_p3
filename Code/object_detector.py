@@ -125,9 +125,14 @@ class ObjectDetectorGroundedDINO():
 
         # lisa_path = os.path.join(model_dir, 'last.pt')
         self.lisa_model = YOLO("./Models/last.pt")
+        self.lisa_model.eval()
 
         # Orient Anything
         self.orient_anything_model = OrientAnythingModel(device='cpu')
+        
+        # Supplemental Car Detection
+        self.yolo = YOLO("./Models/yolo26n.pt")
+        self.yolo.eval()
     
     def predict_traffic(self, image):
 
@@ -184,13 +189,16 @@ class ObjectDetectorGroundedDINO():
         else:
             lisa_results = None
         check_overlap = any('motorcycle' in l or 'bicycle' in l for l in dino_result["text_labels"])
-        new_labels = []            
+        new_labels = []
+        new_boxes = []
+        new_scores = []            
         for box, score, label in zip(dino_result["boxes"], dino_result["scores"], dino_result["text_labels"]):
             # parse labels that G-DINO says is two words
             if label.split()[0] in {"sedan", "hatchback", "suv", "pickup", "box", "motorcycle", "bicycle", "truck"}:
                 label = label.split()[0]
             new_labels.append(label)
-            # Convert box to integers
+            new_boxes.append(box)
+            new_scores.append(score)
             xmin, ymin, xmax, ymax = map(int, box.tolist())
             
             # Draw rectangle (Green)
@@ -214,8 +222,41 @@ class ObjectDetectorGroundedDINO():
                 if overlap_i is not None: detail.append(overlap_i)
             details.append(detail)
 
+        yolo_results = self.yolo(image)
+        for yolo_box in yolo_results[0].boxes:
+            yolo_label = yolo_results[0].names[int(yolo_box.cls[0])]
+            if yolo_label in ["car"]:
+                yolo_label = "sedan"
+                for dino_box, dino_label in zip(dino_result["boxes"], new_labels):
+                    overlap = False
+                    if dino_label in {"sedan", "hatchback", "suv", "pickup"}:
+                        iou = torchvision.ops.box_iou(yolo_box.xyxy.detach().cpu(), dino_box.detach().cpu()[None, :])
+                        if iou > 0.25:
+                            overlap = True
+                            break
+                if not overlap:
+                    new_boxes.append(yolo_box.xyxy[0])
+                    new_scores.append(yolo_box.conf)
+                    new_labels.append(yolo_label)
+
+                    xmin, ymin, xmax, ymax = map(int, yolo_box.xyxy[0].tolist())
+                    cv2.rectangle(dino_img, (xmin, ymin), (xmax, ymax), (255, 255, 0), 2)
+                
+                    # Add label text
+                    label_text = f"{label}: {score:.2f}"
+                    cv2.putText(dino_img, label_text, (xmin, ymin - 10), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
+                    
+                    detail = self.analyze_details(image, yolo_box.xyxy[0], yolo_label, None)
+                    details.append(detail)
+
+                
+
+
         dino_result["details"] = details
         dino_result["new_labels"] = new_labels
+        dino_result["new_boxes"] = new_boxes
+        dino_result["new_scores"] = new_scores
         return dino_result, dino_img
     
 

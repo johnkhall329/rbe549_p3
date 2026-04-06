@@ -77,6 +77,6 @@ def get_3angle(image, dino, val_preprocess, device):
 
 
 
-model = OrientAnythingModel()
+# model = OrientAnythingModel()
 
-print(model.predict(None))
+# print(model.predict(None))
