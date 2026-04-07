@@ -99,7 +99,7 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
             if "person" in label:
                 # detail.apply_translation([bx, by, bz])
                 tmesh, k_pts = detail[:2]
-                prev_humans = glob.glob("'./Output/humans/*.obj")
+                prev_humans = glob.glob("./Output/humans/*.obj")
                 id = len(prev_humans)
                 file_name = f'./Output/humans/{id}.obj'
                 tmesh.export(file_name)

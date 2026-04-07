@@ -17,9 +17,14 @@ Grounding DINO is trained on a variety of large image datasets such as COCO, O36
 once: Unified, real-time object detection,” 2016. [Online]. Available:
 https://arxiv.org/abs/1506.02640
 
-**Usage**: In contrast to last phase, we transitioned away from using YOLO for object detection. The only remaining application is for traffic sign recognition.
+**Usage**: In contrast to last phase, we transitioned away from using YOLO for object detection. Now we use YOLO to augment Grounding DINO by detected any missed cars and classifying traffic signs.
 
 **Datasets**:
+
+- YOLO26 for car supplementary detection is pre-trained on the COCO dataset: 
+    - T.-Y. Lin, M. Maire, S. Belongie, L. Bourdev, R. Girshick, J. Hays,
+P. Perona, D. Ramanan, C. L. Zitnick, and P. Doll´ar, “Microsoft
+coco: Common objects in context,” 2015. [Online]. Available: https://arxiv.org/abs/1405.0312
 - YOLOv8 for traffic sign detection is trained on the combined GLARE+LISA dataset:
     - N. Gray, M. Moraes, J. Bian, A. Wang, A. Tian, K. Wilson, Y. Huang,
 H. Xiong, and Z. Guo, “Glare: A dataset for traffic sign detection in sun
