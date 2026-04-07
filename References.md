@@ -81,3 +81,12 @@ We use 4D-Humans released pre-trained model that was trained on numerous datsets
 **Repo**: https://github.com/JaidedAI/EasyOCR
 
 **Usage**: EasyOCR is used to augment our traffic sign detection to ensure that YOLO is detecting the correct sign and to extract the speed limit information.
+
+## Orient-Anything:
+**Paper**: Z. Wang, Z. Zhang, T. Pang, C. Du, H. Zhao, and Z. Zhao, “Orient Anything: Learning Robust Object Orientation Estimation from Rendering 3D Models,” 2024. [Online]. Available: https://arxiv.org/abs/2412.18605
+
+**Repo**: https://github.com/SpatialVision/Orient-Anything
+
+**Usage**: We utilize Orient-Anything to estimate the rotation of objects detected in the scene. Given an input image, the model predicts object orientation in a category-agnostic manner. This allows us to use the same model for various different vehicle types
+
+**Datasets**: The pretrained Orient-Anything model is trained on a large synthetic dataset of ~2 million rendered 3D object images with precise 6D orientation annotations, created by rendering 3D models from random views to provide orientation supervision.
