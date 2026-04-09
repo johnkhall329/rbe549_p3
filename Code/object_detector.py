@@ -16,7 +16,6 @@ from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
 from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
 from accelerate import Accelerator
 
-from orientation_detection import detect3d
 from traffic_light_classification import classify_light
 from orient_anything_detection import OrientAnythingModel
 
@@ -26,6 +25,12 @@ from hmr2.utils import recursive_to
 from hmr2.datasets.vitdet_dataset import ViTDetDataset, DEFAULT_MEAN, DEFAULT_STD
 from hmr2.utils.renderer import Renderer, cam_crop_to_full
 # from hmr2.utils.preprocess import load_image
+
+from sam2.build_sam import build_sam2
+from sam2.sam2_image_predictor import SAM2ImagePredictor
+
+SAM_2_CKPT = "./Modules/Grounded-SAM-2/checkpoints/sam2.1_hiera_small.pt"
+SAM_2_CFG = "configs/sam2.1/sam2.1_hiera_s.yaml"
 
 class ObjectDetector():
     # model_type should be 
@@ -133,6 +138,10 @@ class ObjectDetectorGroundedDINO():
         # Supplemental Car Detection
         self.yolo = YOLO("./Models/yolo26n.pt")
         self.yolo.eval()
+
+        # Segmentation
+        self.sam2_model = build_sam2(SAM_2_CFG, SAM_2_CKPT, device=self.device)
+        self.sam2_predictor = SAM2ImagePredictor(self.sam2_model)
     
     # def predict_traffic(self, image):
 
@@ -180,7 +189,20 @@ class ObjectDetectorGroundedDINO():
             threshold=0.4,
             text_threshold=0.3,
             target_sizes=[(height, width)]
-        )[0]   
+        )[0]
+
+        # Segmentation
+        self.sam2_predictor.set_image(image)
+
+        input_boxes = dino_result["boxes"].cpu().numpy()
+
+        # TODO: Use these masks for centroid detection, for depth detection, etc.
+        masks, scores, logits = self.sam2_predictor.predict(
+            point_coords=None,
+            point_labels=None,
+            box=input_boxes,
+            multimask_output=False,
+        )
 
         dino_img = image.copy()
         details = []
@@ -222,6 +244,7 @@ class ObjectDetectorGroundedDINO():
                 if overlap_i is not None: detail.append(overlap_i)
             details.append(detail)
 
+        # Add yolo cars that G-DINO misses
         yolo_results = self.yolo(image)
         for yolo_box in yolo_results[0].boxes:
             yolo_label = yolo_results[0].names[int(yolo_box.cls[0])]
