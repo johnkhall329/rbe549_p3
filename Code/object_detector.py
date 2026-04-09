@@ -134,29 +134,29 @@ class ObjectDetectorGroundedDINO():
         self.yolo = YOLO("./Models/yolo26n.pt")
         self.yolo.eval()
     
-    def predict_traffic(self, image):
+    # def predict_traffic(self, image):
 
-        upscaled_light = cv2.resize(image, (256, 256), interpolation=cv2.INTER_CUBIC)
+    #     upscaled_light = cv2.resize(image, (256, 256), interpolation=cv2.INTER_CUBIC)
 
-        height, width = upscaled_light.shape[:2]
+    #     height, width = upscaled_light.shape[:2]
 
-        torch.cuda.empty_cache()
-        dino_inputs = self.processor(images=upscaled_light, text=self.dino_traffic_labels, return_tensors="pt").to(self.device)
+    #     torch.cuda.empty_cache()
+    #     dino_inputs = self.processor(images=upscaled_light, text=self.dino_traffic_labels, return_tensors="pt").to(self.device)
 
-        with torch.no_grad():
-            outputs = self.grounded_dino_model(**dino_inputs)
+    #     with torch.no_grad():
+    #         outputs = self.grounded_dino_model(**dino_inputs)
 
-        dino_result = self.processor.post_process_grounded_object_detection(
-            outputs,
-            dino_inputs.input_ids,
-            threshold=0.4,
-            text_threshold=0.3,
-            target_sizes=[(height, width)]
-        )[0]
+    #     dino_result = self.processor.post_process_grounded_object_detection(
+    #         outputs,
+    #         dino_inputs.input_ids,
+    #         threshold=0.4,
+    #         text_threshold=0.3,
+    #         target_sizes=[(height, width)]
+    #     )[0]
 
 
-        # use some logic to parse this
-        return dino_result["labels"][0]
+    #     # use some logic to parse this
+    #     return dino_result["labels"][0]
 
     def predict(self, image, format="BGR"):
         human_objs = glob.glob("./Output/humans/*.obj") # clear previous run of human predictions
