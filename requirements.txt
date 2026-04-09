@@ -7,3 +7,4 @@ fast_simplification
 seaborn
 easyocr
 rembg
+supervision
