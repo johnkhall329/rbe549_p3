@@ -349,7 +349,7 @@ class ObjectDetectorGroundedDINO():
                         for t in text:
                             numbers = re.findall(r'\d+', t)
                             integer_list += [int(n) for n in numbers]
-                        if len(integer_list) >0:
+                        if len(integer_list) > 0:
                             speed = np.max(integer_list)
                             return {"type": "speed limit", "speed": str(speed)}
                         
