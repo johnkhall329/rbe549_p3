@@ -19,6 +19,9 @@ from accelerate import Accelerator
 from traffic_light_classification import classify_light
 from orient_anything_detection import OrientAnythingModel
 
+import supervision as sv
+from supervision.draw.color import ColorPalette
+
 from hmr2.configs import CACHE_DIR_4DHUMANS
 from hmr2.models import HMR2, download_models, load_hmr2, DEFAULT_CHECKPOINT
 from hmr2.utils import recursive_to
@@ -28,6 +31,25 @@ from hmr2.utils.renderer import Renderer, cam_crop_to_full
 
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
+
+CUSTOM_COLOR_MAP = [
+    "#e6194b",
+    "#3cb44b",
+    "#ffe119",
+    "#0082c8",
+    "#f58231",
+    "#911eb4",
+    "#46f0f0",
+    "#f032e6",
+    "#d2f53c",
+    "#fabebe",
+    "#008080",
+    "#e6beff",
+    "#aa6e28",
+    "#fffac8",
+    "#800000",
+    "#aaffc3",
+]
 
 SAM_2_CKPT = "./Modules/Grounded-SAM-2/checkpoints/sam2.1_hiera_small.pt"
 SAM_2_CFG = "configs/sam2.1/sam2.1_hiera_s.yaml"
@@ -191,18 +213,6 @@ class ObjectDetectorGroundedDINO():
             target_sizes=[(height, width)]
         )[0]
 
-        # Segmentation
-        self.sam2_predictor.set_image(image)
-
-        input_boxes = dino_result["boxes"].cpu().numpy()
-
-        # TODO: Use these masks for centroid detection, for depth detection, etc.
-        masks, scores, logits = self.sam2_predictor.predict(
-            point_coords=None,
-            point_labels=None,
-            box=input_boxes,
-            multimask_output=False,
-        )
 
         dino_img = image.copy()
         details = []
@@ -215,6 +225,9 @@ class ObjectDetectorGroundedDINO():
         new_boxes = []
         new_scores = []            
         for box, score, label in zip(dino_result["boxes"], dino_result["scores"], dino_result["text_labels"]):
+            # might save memory?
+            box, score = box.cpu(), score.cpu().numpy()
+
             # parse labels that G-DINO says is two words
             if label.split()[0] in {"sedan", "hatchback", "suv", "pickup", "box", "motorcycle", "bicycle", "truck"}:
                 label = label.split()[0]
@@ -222,14 +235,6 @@ class ObjectDetectorGroundedDINO():
             new_boxes.append(box)
             new_scores.append(score)
             xmin, ymin, xmax, ymax = map(int, box.tolist())
-            
-            # Draw rectangle (Green)
-            cv2.rectangle(dino_img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
-            
-            # Add label text
-            label_text = f"{label}: {score:.2f}"
-            cv2.putText(dino_img, label_text, (xmin, ymin - 10), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             
             detail = self.analyze_details(image, box, label, lisa_results)
             if check_overlap and label == 'person':
@@ -258,24 +263,62 @@ class ObjectDetectorGroundedDINO():
                             overlap = True
                             break
                 if not overlap:
-                    new_boxes.append(yolo_box.xyxy[0])
-                    new_scores.append(yolo_box.conf)
+                    new_boxes.append(yolo_box.xyxy[0].cpu())
+                    new_scores.append(yolo_box.conf.cpu().numpy())
                     new_labels.append(yolo_label)
 
-                    xmin, ymin, xmax, ymax = map(int, yolo_box.xyxy[0].tolist())
-                    cv2.rectangle(dino_img, (xmin, ymin), (xmax, ymax), (255, 255, 0), 2)
+                    # # Plot additional cars
+                    # xmin, ymin, xmax, ymax = map(int, yolo_box.xyxy[0].tolist())
+                    # cv2.rectangle(dino_img, (xmin, ymin), (xmax, ymax), (255, 255, 0), 2)
                 
-                    # Add label text
-                    label_text = f"{label}: {score:.2f}"
-                    cv2.putText(dino_img, label_text, (xmin, ymin - 10), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
+                    # # Add label text
+                    # label_text = f"{label}: {score:.2f}"
+                    # cv2.putText(dino_img, label_text, (xmin, ymin - 10), 
+                    #             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
                     
                     detail = self.analyze_details(image, yolo_box.xyxy[0], yolo_label, None)
-                    details.append(detail)
+                    details.append(detail)                
 
-                
+        # Segmentation
+        self.sam2_predictor.set_image(image)
+
+        input_boxes = np.stack(new_boxes)
+        masks, scores, logits = self.sam2_predictor.predict(
+            point_coords=None,
+            point_labels=None,
+            box=input_boxes,
+            multimask_output=False,
+        )
+
+        # comes out as (c, 1, h, w)
+        masks = masks.squeeze(1)
+
+        # Plotting
+        class_ids = np.array(list(range(len(new_labels))))
+
+        plot_labels = [
+            f"{class_name} {int(confidence):.2f}"
+            for class_name, confidence
+            in zip(new_labels, new_scores)
+        ]
+
+        detections = sv.Detections(
+            xyxy=input_boxes,  # (n, 4)
+            mask=masks.astype(bool),  # (n, h, w)
+            class_id=class_ids
+        )
+
+        box_annotator = sv.BoxAnnotator(color=ColorPalette.from_hex(CUSTOM_COLOR_MAP))
+        annotated_frame = box_annotator.annotate(scene=dino_img, detections=detections)
+
+        label_annotator = sv.LabelAnnotator(color=ColorPalette.from_hex(CUSTOM_COLOR_MAP))
+        annotated_frame = label_annotator.annotate(scene=annotated_frame, detections=detections, labels=plot_labels)
+
+        mask_annotator = sv.MaskAnnotator(color=ColorPalette.from_hex(CUSTOM_COLOR_MAP))
+        annotated_frame = mask_annotator.annotate(scene=annotated_frame, detections=detections)
 
 
+        dino_result["masks"] = list(masks)
         dino_result["details"] = details
         dino_result["new_labels"] = new_labels
         dino_result["new_boxes"] = new_boxes

@@ -45,7 +45,12 @@ LABEL_MAP_DINO = {
 def save_dino_results_to_json(image, object_detection_results, depth_results, lane_results, args, K, extrinsics):
     scene_objects = {}
 
-    for box, score, label, detail in zip(object_detection_results["new_boxes"], object_detection_results["new_scores"], object_detection_results["new_labels"], object_detection_results["details"]):
+    for box, mask, score, label, detail in zip(object_detection_results["new_boxes"], 
+                                               object_detection_results["masks"], 
+                                               object_detection_results["new_scores"], 
+                                               object_detection_results["new_labels"], 
+                                               object_detection_results["details"]):
+        
         xmin, ymin, xmax, ymax = map(int, box.tolist())
 
         x_center, y_center = ((xmax + xmin)//2), ((ymax + ymin)//2)
