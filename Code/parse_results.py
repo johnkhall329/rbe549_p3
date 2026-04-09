@@ -53,10 +53,20 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
         
         xmin, ymin, xmax, ymax = map(int, box.tolist())
 
-        x_center, y_center = ((xmax + xmin)//2), ((ymax + ymin)//2)
-        
-        z_depth = depth_results[ymin:ymax, xmin:xmax].mean()
 
+
+        y_coords, x_coords = np.where(mask == 1)
+
+        if len(x_coords) > 0:
+            x_center = x_coords.mean()
+            y_center = y_coords.mean()
+            z_depth = depth_results[y_coords, x_coords].mean()
+        else:
+            # Using bounding box center if there is an error. This shouldn't come up ideally
+            x_center, y_center = ((xmax + xmin)//2), ((ymax + ymin)//2)
+            z_depth = depth_results[ymin:ymax, xmin:xmax].mean()
+            print("ERROR: Mask is empty!")
+        
         blender_x, blender_y, blender_z = locate_3D_point(z_depth, x_center, y_center, K, extrinsics)
         blender_z = 0 # not using this right now
         if label=="person":
