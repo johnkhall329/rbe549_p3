@@ -190,8 +190,8 @@ def main(args):
 def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
-    parser.add_argument('--sequence',default='trimmed', help="Select which sequence to generate visuals for")
-    parser.add_argument('--stride', default=24, help="How many frames to skip in video")
+    parser.add_argument('--sequence',default='test', help="Select which sequence to generate visuals for")
+    parser.add_argument('--stride', default=200, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
     parser.add_argument('--headless', default=True)
