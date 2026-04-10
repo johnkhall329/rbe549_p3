@@ -60,6 +60,12 @@ def handle_command(cmd, client_conn):
                         rot = sign_info.get("rotation", [0.0,0.0,0.0])
                         speed = sign_info.get("speed", "")
                         blenderpy_utils.insert_speed_sign(i, loc, rot, speed, blender_collections)
+                elif asset_name in asset_info["vehicles"]:
+                    for v_info in asset_instances:
+                        loc = v_info.get("location", [0.0,0.0,0.0])
+                        rot = v_info.get("rotation", [0.0,0.0,0.0])
+                        signal = v_info.get("signals", (False, False, False))
+                        blenderpy_utils.insert_vehicle(asset_name, loc, rot, signal, blender_assets)
                 else:
                     for info in asset_instances:
                         loc = info.get("location", [0.0,0.0,0.0])

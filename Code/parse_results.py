@@ -106,8 +106,9 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                 obj_dict["file location"] = file_name
 
             # Orientation Parsing
-            if detail != '' and isinstance(detail,str) and detail.split()[0] == 'orientation:':
-                rot_val = float(detail.split()[1])
+            orientation = detail.get("orientation", False) if isinstance(detail, dict) else False
+            if orientation:
+                rot_val = float(orientation)
                 # rot_val = math.degrees(rot_val)
                 for degree in range(0, 361, 90):
                     if abs(rot_val - degree) < 15:
@@ -116,6 +117,10 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                 obj_dict["rotation"] = [0.0, 0.0, rot_val]
             else:
                 obj_dict["rotation"] = [0.0, 0.0, 0.0]
+
+            signals = detail.get("signals", False) if isinstance(detail, dict) else False
+            if signals:
+                obj_dict["signals"] = signals
             
             # Traffic Light Parsing
             if label == 'traffic light':

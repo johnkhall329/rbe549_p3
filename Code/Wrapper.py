@@ -194,7 +194,7 @@ def configParser():
     parser.add_argument('--stride', default=24, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
-    parser.add_argument('--headless', default=True)
+    parser.add_argument('--headless', default=False)
     return parser
 
 if __name__ == "__main__":

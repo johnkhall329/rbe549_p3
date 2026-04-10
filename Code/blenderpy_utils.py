@@ -425,6 +425,61 @@ def insert_speed_sign(name, location, rotation, speed, blender_collections):
         # else:
         #     main_mesh.scale = blender_collections["SpeedLimitSign"]["scale"]
 
+def insert_vehicle(asset_name, location, rotation, signal, blender_assets):
+    if asset_name in blender_assets:
+        is_braking, is_turning, is_left = signal
+        for model_name, model_info in blender_assets[asset_name].items():
+            obj = model_info["model"]
+            new_inst = bpy.data.objects.new(name=f"Instance_{asset_name}/{model_name}", object_data=obj.data.copy())
+            bpy.context.scene.collection.objects.link(new_inst)
+
+            new_inst.location = [pos+offset for pos,offset in zip(location, model_info["offset"])]
+            new_inst.rotation_euler = [math.radians(rot)+math.radians(offset) for rot,offset in zip(rotation, model_info["rotation"])]
+            if isinstance(model_info["scale"], (int,float)):
+                new_inst.scale = (model_info["scale"], model_info["scale"], model_info["scale"])
+            else:
+                new_inst.scale = model_info["scale"]
+
+            IDX_BRAKE = 1
+            IDX_LEFT  = 2
+            IDX_RIGHT = 3
+
+            for i in range(len(new_inst.data.materials)):
+                old_mat = new_inst.data.materials[i]
+                if old_mat:
+                    # Create the unique material
+                    new_mat = old_mat.copy()
+                    
+                    # Assign it back to the data (since this is a new instance, 
+                    # it won't affect the original template if done correctly)
+                    new_inst.data.materials[i] = new_mat
+                
+                # Logic to determine if this index should be "ON"
+                is_active = False
+                if i == IDX_BRAKE and is_braking:
+                    is_active = True
+                elif i == IDX_LEFT and is_turning and is_left:
+                    print('turn')
+                    is_active = True
+                elif i == IDX_RIGHT and is_turning and not is_left:
+                    print('turn')
+                    is_active = True
+
+                # Update the Shader Nodes
+                if new_mat.use_nodes:
+                    nodes = new_mat.node_tree.nodes
+                    # Check Principled BSDF (standard for modern assets)
+                    principled = next((n for n in nodes if n.type == 'BSDF_PRINCIPLED'), None)
+                    
+                    if principled and is_active:
+                        # Set Emission Strength
+                        # If active, set to 10.0 (high for bloom/glow), otherwise 0.0
+                        print('set_high')
+                        principled.inputs['Emission Strength'].default_value = 1.0
+                        
+            
+            
+
 def render_scene(output_path):
     """
     Renders the current scene and saves it as a PNG.
