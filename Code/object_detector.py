@@ -110,9 +110,10 @@ class ObjectDetector():
     
 
 class ObjectDetectorGroundedDINO():
-    def __init__(self, device="cpu"):
+    def __init__(self, camera_calib, device="cpu"):
 
         self.device = device
+        self.K = camera_calib
 
         dino_model_id = "IDEA-Research/grounding-dino-tiny"
 
@@ -326,9 +327,21 @@ class ObjectDetectorGroundedDINO():
             bounds = [(xmin, ymin), (xmax, ymax)]
             signals = detect_signals(image, bounds, self.daylight_thresh)
             signals = tuple(map(bool, signals))
-            # return f"orientation: {detect3d(image, bounds, label)}"
-            orientation = self.orient_anything_model.predict(image[ymin:ymax, xmin:xmax])
-            return {"orientation": orientation, "signals": signals}
+
+            raw_orientation = self.orient_anything_model.predict(image[ymin:ymax, xmin:xmax])
+
+            center_offset = (xmax + xmin)/2 - self.K[0, 2]
+
+            theta_ray = np.rad2deg(np.arctan2(center_offset, self.K[0,0]))
+
+            rot_val = raw_orientation - theta_ray
+
+            # round close angles
+            for degree in range(-180, 181, 90):
+                if abs(rot_val - degree) < 8:
+                    rot_val = degree
+
+            return {"orientation": rot_val, "signals": signals}
         elif label == 'road sign':
             xmin, ymin, xmax, ymax = map(int, box.tolist())
             crop = cv2.cvtColor(image[ymin:ymax, xmin:xmax], cv2.COLOR_RGB2BGR)

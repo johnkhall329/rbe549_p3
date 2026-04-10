@@ -69,9 +69,19 @@ def main(args):
     if isinstance(args.headless, str): args.headless = args.headless == "True"
     image_gen = get_images_from_scene(args)
 
+    # Camera Calib
+    K = np.load(os.path.join(args.data_path, 'Calib', 'calibration.npy'))
+    extrinsics = np.array([[0,0,1.0,0], # camera to world of front camera
+                            [-1.0,0,0,0], 
+                            [0,-1.0,0,1.25]]) 
+    pitch = 0.01
+    r = np.array([[1, 0, 0],[0, np.cos(pitch), -np.sin(pitch)],[0,np.sin(pitch), np.cos(pitch)]])
+    extrinsics[:3,:3] = extrinsics[:3,:3] @ r
+
+    # Initialize Models
     depth_predictor = DepthPredictor()
 
-    object_detector = ObjectDetectorGroundedDINO()
+    object_detector = ObjectDetectorGroundedDINO(camera_calib=K, device='cpu')
 
     lane_detector = LaneDetector(device='cpu')
     os.makedirs("./Output", exist_ok=True)
@@ -88,34 +98,7 @@ def main(args):
     # time.sleep(1)
     # s.sendall(CLEAR.encode('utf-8'))
     # time.sleep(1)
-    K = np.load(os.path.join(args.data_path, 'Calib', 'calibration.npy'))
-    extrinsics = np.array([[0,0,1.0,0], # camera to world of front camera
-                           [-1.0,0,0,0], 
-                           [0,-1.0,0,1.25]]) 
-    pitch = 0.01
-    r = np.array([[1, 0, 0],[0, np.cos(pitch), -np.sin(pitch)],[0,np.sin(pitch), np.cos(pitch)]])
-    extrinsics[:3,:3] = extrinsics[:3,:3] @ r
-
-    save = True
-    if save:
-        save_path = os.path.join(args.data_path, 'Calib', 'front', 'calibration.txt')
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-
-        extrinsics_for_disp = np.array([[1.0,0,0,0], # identity idk why lol
-                            [0,1.0,0,0], 
-                            [0,0,1.0,0.0]]) 
         
-        proj_matrix = K @ extrinsics_for_disp
-        proj_flattened = proj_matrix.flatten()
-
-        line_content = "P_rect_02: " + " ".join(map(str, proj_flattened))
-
-        with open(save_path, 'w') as f:
-            f.write(line_content + '\n')
-    
-        print(f"Calibration saved successfully to: {save_path}")
-        
-
     s = None
     process = None
 

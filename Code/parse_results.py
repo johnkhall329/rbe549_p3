@@ -125,10 +125,6 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
             if orientation:
                 rot_val = float(orientation)
                 # rot_val = math.degrees(rot_val)
-                for degree in range(0, 361, 90):
-                    if abs(rot_val - degree) < 15:
-                        rot_val = degree
-                rot_val = -(rot_val - 180)
                 obj_dict["rotation"] = [0.0, 0.0, rot_val]
             else:
                 obj_dict["rotation"] = [0.0, 0.0, 0.0]
