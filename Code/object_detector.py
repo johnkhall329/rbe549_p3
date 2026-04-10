@@ -4,6 +4,7 @@ import torchvision
 import re
 
 import easyocr
+from rapidfuzz import process, fuzz
 import matplotlib.pyplot as plt
 import os
 import numpy as np
@@ -22,12 +23,8 @@ from orient_anything_detection import OrientAnythingModel
 import supervision as sv
 from supervision.draw.color import ColorPalette
 
-from hmr2.configs import CACHE_DIR_4DHUMANS
-from hmr2.models import HMR2, download_models, load_hmr2, DEFAULT_CHECKPOINT
-from hmr2.utils import recursive_to
-from hmr2.datasets.vitdet_dataset import ViTDetDataset, DEFAULT_MEAN, DEFAULT_STD
-from hmr2.utils.renderer import Renderer, cam_crop_to_full
-# from hmr2.utils.preprocess import load_image
+from pedestrian_pose import HumanDetector
+from car_signal_detection import detect_signals
 
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
@@ -141,12 +138,7 @@ class ObjectDetectorGroundedDINO():
         self.processor = AutoProcessor.from_pretrained(dino_model_id)
         self.grounded_dino_model = AutoModelForZeroShotObjectDetection.from_pretrained(dino_model_id).to(self.device)
 
-        # setup 4D Humans
-        download_models(CACHE_DIR_4DHUMANS)
-        self.hmr2, self.hmr2_cfg = load_hmr2()
-        self.hmr2.eval()
-        self.hmr2_renderer = Renderer(self.hmr2_cfg, self.hmr2.smpl.faces)
-        os.makedirs("./Output/humans", exist_ok=True)
+        self.human_detector = HumanDetector()
 
         self.reader = easyocr.Reader(['en'])
 
@@ -164,6 +156,8 @@ class ObjectDetectorGroundedDINO():
         # Segmentation
         self.sam2_model = build_sam2(SAM_2_CFG, SAM_2_CKPT, device=self.device)
         self.sam2_predictor = SAM2ImagePredictor(self.sam2_model)
+
+        self.daylight_thresh = 100.0
     
     # def predict_traffic(self, image):
 
@@ -251,33 +245,30 @@ class ObjectDetectorGroundedDINO():
 
         # Add yolo cars that G-DINO misses
         yolo_results = self.yolo(image)
-        for yolo_box in yolo_results[0].boxes:
-            yolo_label = yolo_results[0].names[int(yolo_box.cls[0])]
-            if yolo_label in ["car"]:
-                yolo_label = "sedan"
-                for dino_box, dino_label in zip(dino_result["boxes"], new_labels):
-                    overlap = False
-                    if dino_label in {"sedan", "hatchback", "suv", "pickup"}:
-                        iou = torchvision.ops.box_iou(yolo_box.xyxy.detach().cpu(), dino_box.detach().cpu()[None, :])
-                        if iou > 0.25:
-                            overlap = True
-                            break
-                if not overlap:
-                    new_boxes.append(yolo_box.xyxy[0].cpu())
-                    new_scores.append(yolo_box.conf.cpu().numpy())
-                    new_labels.append(yolo_label)
+        yolo_cars, yolo_conf = self.sort_yolo(yolo_results[0])
+        for yolo_box, conf in zip(yolo_cars, yolo_conf):
+            for dino_box, dino_label in zip(dino_result["boxes"], new_labels):
+                overlap = False
+                if dino_label in {"sedan", "hatchback", "suv", "pickup"}:
+                    iou = torchvision.ops.box_iou(yolo_box, dino_box.detach().cpu()[None, :])
+                    if iou > 0.25:
+                        overlap = True
+                        break
+            if not overlap:
+                new_boxes.append(yolo_box[0])
+                new_scores.append(conf)
+                new_labels.append("sedan")
 
-                    # # Plot additional cars
-                    # xmin, ymin, xmax, ymax = map(int, yolo_box.xyxy[0].tolist())
-                    # cv2.rectangle(dino_img, (xmin, ymin), (xmax, ymax), (255, 255, 0), 2)
+                xmin, ymin, xmax, ymax = map(int, yolo_box[0].tolist())
+                cv2.rectangle(dino_img, (xmin, ymin), (xmax, ymax), (255, 255, 0), 2)
+            
+                # Add label text
+                label_text = f"sedan: {conf:.2f}"
+                cv2.putText(dino_img, label_text, (xmin, ymin - 10), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
                 
-                    # # Add label text
-                    # label_text = f"{label}: {score:.2f}"
-                    # cv2.putText(dino_img, label_text, (xmin, ymin - 10), 
-                    #             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
-                    
-                    detail = self.analyze_details(image, yolo_box.xyxy[0], yolo_label, None)
-                    details.append(detail)                
+                detail = self.analyze_details(image, yolo_box[0], "sedan", None)
+                details.append(detail)             
 
         # Segmentation
         self.sam2_predictor.set_image(image)
@@ -297,7 +288,7 @@ class ObjectDetectorGroundedDINO():
         class_ids = np.array(list(range(len(new_labels))))
 
         plot_labels = [
-            f"{class_name} {int(confidence):.2f}"
+            f"{class_name} {float(confidence):.2f}"
             for class_name, confidence
             in zip(new_labels, new_scores)
         ]
@@ -317,7 +308,6 @@ class ObjectDetectorGroundedDINO():
         mask_annotator = sv.MaskAnnotator(color=ColorPalette.from_hex(CUSTOM_COLOR_MAP))
         annotated_frame = mask_annotator.annotate(scene=annotated_frame, detections=detections)
 
-
         dino_result["masks"] = list(masks)
         dino_result["details"] = details
         dino_result["new_labels"] = new_labels
@@ -330,12 +320,15 @@ class ObjectDetectorGroundedDINO():
         if label == "traffic light":
             return classify_light(image, box)
         elif label == "person":
-            return self.detect_humans(image, box)
+            return self.human_detector.detect_humans(image, box)
         elif label in {"sedan", "hatchback", "suv", "pickup", "truck", "box", "motorcycle", "bicycle"}:
             xmin, ymin, xmax, ymax = map(int, box.tolist())
             bounds = [(xmin, ymin), (xmax, ymax)]
+            signals = detect_signals(image, bounds, self.daylight_thresh)
+            signals = tuple(map(bool, signals))
             # return f"orientation: {detect3d(image, bounds, label)}"
-            return f"orientation: {self.orient_anything_model.predict(image[ymin:ymax, xmin:xmax])}"
+            orientation = self.orient_anything_model.predict(image[ymin:ymax, xmin:xmax])
+            return {"orientation": orientation, "signals": signals}
         elif label == 'road sign':
             xmin, ymin, xmax, ymax = map(int, box.tolist())
             crop = cv2.cvtColor(image[ymin:ymax, xmin:xmax], cv2.COLOR_RGB2BGR)
@@ -356,47 +349,75 @@ class ObjectDetectorGroundedDINO():
                     if "stop" in lisa_cls.lower():
                         if any('stop' in t.lower() for t in text):
                             return {"type": "stop"}
-            return {}
+            return self.check_ocr_signs(text)
         return ''
+    
+    def check_ocr_signs(self, ocr_text):
+        if len(ocr_text) < 1: return {}
+        speed_match = process.extractOne("SPEED", ocr_text, scorer=fuzz.WRatio)
+        stop_match = process.extractOne("STOP", ocr_text, scorer=fuzz.WRatio)
+        limit_match = process.extractOne("LIMIT", ocr_text, scorer=fuzz.WRatio)
+        bump_match = process.extractOne("BUMP", ocr_text, scorer=fuzz.WRatio)
+        hump_match = process.extractOne("HUMP", ocr_text, scorer=fuzz.WRatio)
 
+        if speed_match[1] > 80 and limit_match[1] > 80:
+            integer_list = []
+            for t in ocr_text:
+                numbers = re.findall(r'\d+', t)
+                integer_list += [int(n) for n in numbers]
+            if len(integer_list) >0:
+                speed = np.max(integer_list)
+                return {"type": "speed limit", "speed": str(speed)}
+        elif speed_match[1] > 80 and (bump_match[1] > 80 or hump_match[1] > 80):
+            return {"type": "speed bump"}
+        elif stop_match[1] > 80:
+            return {"type": "stop"}
+        else:
+            return {}
 
-    def detect_humans(self, image, box):
-        dataset = ViTDetDataset(self.hmr2_cfg, image, box[None,:].numpy())
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=False, num_workers=0)
-
-        all_verts = []
-        all_keypoints = []
-        all_3d_keypoints = []
-        for batch in dataloader:
-            patch_size = batch['img'].shape[-1] 
-            with torch.no_grad():
-                out = self.hmr2(batch)
-            batch_size = batch['img'].shape[0]
-
-            for n in range(batch_size):               
-                verts = out['pred_vertices'][n].detach().cpu().numpy()
-                k_pts = out['pred_keypoints_2d'][n]
-                k_pts_3d = out['pred_keypoints_3d'][n].detach().cpu().numpy()
-                # keypoints_patch = k_pts * (patch_size / 2.0)
-                center = batch['box_center'][n] # [N, 2]
-                size = batch['box_size'][n]     # [N] (this is the bbox_size from your code)
-                # scale_factor = (size / patch_size).unsqueeze(-1).unsqueeze(-1)
-                keypoints_full = k_pts*size + center
-
-                all_verts.append(verts)
-                all_keypoints.append(keypoints_full.detach().cpu().numpy())
-                all_3d_keypoints.append(k_pts_3d)
-
-        all_verts = np.vstack(all_verts)
-        all_keypoints = np.vstack(all_keypoints)
-        all_3d_keypoints = np.vstack(all_3d_keypoints)
-        min_y = all_verts.max(axis=0)[1]
-        tmesh = self.hmr2_renderer.vertices_to_trimesh(all_verts, np.array([0,-min_y,0]))
-        mesh_low_poly = tmesh.simplify_quadric_decimation(0.8)
-        # draw_img = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        # for pt in all_keypoints:
-        #     cv2.circle(draw_img, pt.astype(np.int64), 2, (0,0,255), -1)
-        # cv2.circle(draw_img, all_keypoints[8].astype(np.int64), 2, (255,0,0), -1)
-        # cv2.imshow('draw_img', draw_img)
-        # cv2.waitKey(1)
-        return [mesh_low_poly, all_keypoints]
+    def sort_yolo(self, results, iou_thresh=0.2):
+        yolo_cars = []
+        yolo_conf = []
+        for box in results.boxes:
+            if results.names[int(box.cls[0])] == "car":
+                conf = float(box.conf.detach().cpu())
+                if conf > 0.4:
+                    yolo_cars.append(box.xyxy.detach().cpu())
+                    yolo_conf.append(float(box.conf.detach().cpu()))
+        sorted_cars = []
+        sorted_conf = []
+        if len(yolo_cars) > 2:
+            merged_idxs = []
+            for i, i_box in enumerate(yolo_cars[:-1]):
+                max_iou = iou_thresh
+                iou_idx = None
+                for j, j_box in enumerate(yolo_cars[i+1:]):
+                    iou = torchvision.ops.box_iou(i_box, j_box)
+                    if iou > iou_thresh and iou > max_iou and i+j+1 not in merged_idxs:
+                        iou_idx = i+j+1
+                        max_iou = float(iou)
+                merged_idxs.append((max_iou, i, iou_idx))
+            merged_idxs.append((iou_thresh, len(yolo_cars)-1, None))
+            merged = []
+            for _, i_car, j_car in sorted(merged_idxs, key=lambda item:item[0], reverse=True):
+                if i_car not in merged and j_car is not None:
+                    i_box = yolo_cars[i_car]
+                    j_box = yolo_cars[j_car]
+                    combined = torch.cat((i_box, j_box))
+                    x_min, y_min = combined[:,:2].min(axis=0)[0]
+                    x_max, y_max = combined[:,2:].max(axis=0)[0]
+                    new_box = torch.tensor([[x_min, y_min, x_max, y_max]])
+                    merged.append(i_car)
+                    merged.append(j_car)
+                    sorted_cars.append(new_box)
+                    max_conf = float(max(yolo_conf[i_car], yolo_conf[j_car]))
+                    sorted_conf.append(max_conf)
+                elif i_car not in merged and j_car is None:
+                    sorted_cars.append(yolo_cars[i_car])
+                    sorted_conf.append(yolo_conf[i_car])
+                else:
+                    continue
+        else:
+            sorted_cars = yolo_cars
+            sorted_conf = yolo_conf
+        return sorted_cars, sorted_conf

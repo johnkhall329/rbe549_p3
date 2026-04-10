@@ -108,6 +108,16 @@ def preload_assets(asset_folder, asset_info):
         "OFF": [off,off,off]
         # ... etc for all 9
     }
+
+    global car_mats
+    car_mats = {
+        "brake": {"base_color": "#660002FF", "emission_color": "#FF0017FF", "emission_strength": 1.0},
+        "turn_left": {"base_color": "#6F6600FF", "emission_color": "#FFEF06FF", "emission_strength": 1.0},
+        "turn_right": {"base_color": "#6F6600FF", "emission_color": "#FFEF06FF", "emission_strength": 1.0},
+        "off_light": {"base_color": "#989898FF"},
+        "stopped": {"base_color": "#B6B6B6FF"},
+        "moving": {"base_color": "#37384FFF"}
+    }
     
     colors = ["Red_Arrow", "Yellow_Arrow", "Green_Arrow"]
     directions = ["_L", "_U", "_R", "_D"]
@@ -414,6 +424,58 @@ def insert_speed_sign(name, location, rotation, speed, blender_collections):
         #     main_mesh.scale = (blender_collections["SpeedLimitSign"]["scale"], blender_collections["SpeedLimitSign"]["scale"], blender_collections["SpeedLimitSign"]["scale"])
         # else:
         #     main_mesh.scale = blender_collections["SpeedLimitSign"]["scale"]
+
+def insert_vehicle(asset_name, location, rotation, signal, blender_assets):
+    if asset_name in blender_assets:
+        is_braking, is_turning, is_left = signal
+        for model_name, model_info in blender_assets[asset_name].items():
+            obj = model_info["model"]
+            new_inst = bpy.data.objects.new(name=f"Instance_{asset_name}/{model_name}", object_data=obj.data.copy())
+            bpy.context.scene.collection.objects.link(new_inst)
+
+            new_inst.location = [pos+offset for pos,offset in zip(location, model_info["offset"])]
+            new_inst.rotation_euler = [math.radians(rot)+math.radians(offset) for rot,offset in zip(rotation, model_info["rotation"])]
+            if isinstance(model_info["scale"], (int,float)):
+                new_inst.scale = (model_info["scale"], model_info["scale"], model_info["scale"])
+            else:
+                new_inst.scale = model_info["scale"]
+
+            IDX_BRAKE = 1
+            IDX_LEFT  = 2
+            IDX_RIGHT = 3
+
+            for i in range(len(new_inst.data.materials)):
+                old_mat = new_inst.data.materials[i]
+                if old_mat:
+                    # Create the unique material
+                    new_mat = old_mat.copy()
+                    
+                    # Assign it back to the data (since this is a new instance, 
+                    # it won't affect the original template if done correctly)
+                    new_inst.data.materials[i] = new_mat
+                
+                # Logic to determine if this index should be "ON"
+                is_active = False
+                if i == IDX_BRAKE and is_braking:
+                    is_active = True
+                elif i == IDX_LEFT and is_turning and is_left:
+                    is_active = True
+                elif i == IDX_RIGHT and is_turning and not is_left:
+                    is_active = True
+
+                # Update the Shader Nodes
+                if new_mat.use_nodes:
+                    nodes = new_mat.node_tree.nodes
+                    # Check Principled BSDF (standard for modern assets)
+                    principled = next((n for n in nodes if n.type == 'BSDF_PRINCIPLED'), None)
+                    
+                    if principled and is_active:
+                        # Set Emission Strength
+                        # If active, set to 10.0 (high for bloom/glow), otherwise 0.0
+                        principled.inputs['Emission Strength'].default_value = 1.0
+                        
+            
+            
 
 def render_scene(output_path):
     """

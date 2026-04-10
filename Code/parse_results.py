@@ -121,8 +121,9 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                 obj_dict["file location"] = file_name
 
             # Orientation Parsing
-            if detail != '' and isinstance(detail,str) and detail.split()[0] == 'orientation:':
-                rot_val = float(detail.split()[1])
+            orientation = detail.get("orientation", False) if isinstance(detail, dict) else False
+            if orientation:
+                rot_val = float(orientation)
                 # rot_val = math.degrees(rot_val)
                 for degree in range(0, 361, 90):
                     if abs(rot_val - degree) < 15:
@@ -131,6 +132,10 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                 obj_dict["rotation"] = [0.0, 0.0, rot_val]
             else:
                 obj_dict["rotation"] = [0.0, 0.0, 0.0]
+
+            signals = detail.get("signals", False) if isinstance(detail, dict) else False
+            if signals:
+                obj_dict["signals"] = signals
             
             # Traffic Light Parsing
             if label == 'traffic light':
@@ -248,41 +253,4 @@ def locate_3D_point_old(depth, u, v, K, max_depth=20):
 
 # def light_seg(resutl, box):
 #     green = [63,  18, 146, 158, 255, 255]
-
-
-# def hsv_slider(result):
-#     image = cv2.cvtColor(result.orig_img, cv2.COLOR_RGB2HSV)
-#     cv2.namedWindow('Threshold Adjustment',cv2.WINDOW_NORMAL)
-#     cv2.resizeWindow('Threshold Adjustment', 640,480)
-
-#     def callback(x):
-#         pass
-
-#     thresh = np.array([63,  18, 146, 158, 255, 255])
-#     cv2.createTrackbar('lowH','Threshold Adjustment',thresh[0],255,callback)
-#     cv2.createTrackbar('highH','Threshold Adjustment',thresh[3],255,callback)
-
-#     cv2.createTrackbar('lowS','Threshold Adjustment',thresh[1],255,callback)
-#     cv2.createTrackbar('highS','Threshold Adjustment',thresh[4],255,callback)
-
-#     cv2.createTrackbar('lowV','Threshold Adjustment',thresh[2],255,callback)
-#     cv2.createTrackbar('highV','Threshold Adjustment',thresh[5],255,callback)
-
-#     sel = True
-#     while sel:
-#         thresh = np.array([cv2.getTrackbarPos('lowH', 'Threshold Adjustment'),cv2.getTrackbarPos('lowS', 'Threshold Adjustment'),cv2.getTrackbarPos('lowV', 'Threshold Adjustment'),
-#                            cv2.getTrackbarPos('highH', 'Threshold Adjustment'),cv2.getTrackbarPos('highS', 'Threshold Adjustment'),cv2.getTrackbarPos('highV', 'Threshold Adjustment')])
-#         frame_threshold = cv2.inRange(image, thresh[:3], thresh[3:])
-#         # kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(5,5))
-#         # dilated = cv2.dilate(frame_threshold, kernel,iterations=3)
-#         # erode = cv2.erode(dilated,kernel,iterations=2)
-#         # dilated2 = cv2.dilate(erode, kernel,iterations=3)
-#         cv2.imshow('Threshold Adjustment', frame_threshold)
-#         key = cv2.waitKey(10)
-#         sel = (key != 13 and key != 27)
-#     print(thresh)
-#     cv2.destroyWindow('Threshold Adjustment')
-#     # print('h')
-#     pass
-#     # image = result.
 

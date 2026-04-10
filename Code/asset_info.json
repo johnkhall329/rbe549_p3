@@ -1,6 +1,8 @@
 {
     "protected_assets": ["Camera", "Light", "Ego_Car", "Empty", "Border", "Ground", "Sun"],
 
+    "vehicles": ["SedanAndHatchback", "SUV", "PickupTruck", "Truck"],
+
     "Dustbin":{
         "Object": {
             "Bin_Mesh.072":{

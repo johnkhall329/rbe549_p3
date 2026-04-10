@@ -8,3 +8,4 @@ seaborn
 easyocr
 rembg
 supervision
+RapidFuzz

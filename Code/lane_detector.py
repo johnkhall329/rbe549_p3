@@ -71,7 +71,7 @@ class LaneDetector():
         image = self.transform(cv2.resize(orig_image, (640,640)))
         image = image.unsqueeze(0).to(self.device)
         [pred, anchor_grid], seg, ll = self.yolop(image)
-        ll_mask = self.lane_line_mask(ll)
+        ll_mask = self.lane_line_mask(ll, orig_image.shape[:2][::-1])
 
 
         filtered_mask = cv2.dilate(cv2.erode(ll_mask, np.ones((5,5))),np.ones((3,3)))
@@ -313,14 +313,14 @@ class LaneDetector():
                     )
         return image
     
-    def lane_line_mask(self, ll = None):
+    def lane_line_mask(self, ll, shape):
         # ll_predict = ll[:, :, 12:372,:]
         ll_seg_mask = torch.nn.functional.interpolate(ll, scale_factor=2, mode='bilinear')
         ll_seg_mask = torch.round(ll_seg_mask).squeeze(1)
         ll_seg_mask = ll_seg_mask.int().squeeze().cpu().numpy()
         color_mask = np.zeros((ll_seg_mask.shape[0], ll_seg_mask.shape[1]), dtype=np.uint8)
         color_mask[ll_seg_mask==1] = 255
-        color_mask = cv2.resize(color_mask, (1280, 960))
+        color_mask = cv2.resize(color_mask, shape)
         return color_mask
     
 def sample_curve(curve_model, in_points, x_dir = True, n_samples = 10):
