@@ -4,6 +4,7 @@ import torchvision
 import re
 
 import easyocr
+from rapidfuzz import process, fuzz
 import matplotlib.pyplot as plt
 import os
 import numpy as np
@@ -279,16 +280,38 @@ class ObjectDetectorGroundedDINO():
                     if "stop" in lisa_cls.lower():
                         if any('stop' in t.lower() for t in text):
                             return {"type": "stop"}
-            return {}
+            return self.check_ocr_signs(text)
         return ''
     
+    def check_ocr_signs(self, ocr_text):
+        if len(ocr_text) < 1: return {}
+        speed_match = process.extractOne("SPEED", ocr_text, scorer=fuzz.WRatio)
+        limit_match = process.extractOne("LIMIT", ocr_text, scorer=fuzz.WRatio)
+        bump_match = process.extractOne("BUMP", ocr_text, scorer=fuzz.WRatio)
+        hump_match = process.extractOne("HUMP", ocr_text, scorer=fuzz.WRatio)
+
+        if speed_match[1] > 80 and limit_match[1] > 80:
+            integer_list = []
+            for t in ocr_text:
+                numbers = re.findall(r'\d+', t)
+                integer_list += [int(n) for n in numbers]
+            if len(integer_list) >0:
+                speed = np.max(integer_list)
+                return {"type": "speed limit", "speed": str(speed)}
+        elif speed_match[1] > 80 and (bump_match[1] > 80 or hump_match[1] > 80):
+            return {"type": "speed bump"}
+        else:
+            return {}
+
     def sort_yolo(self, results, iou_thresh=0.2):
         yolo_cars = []
         yolo_conf = []
         for box in results.boxes:
-            if results.names[int(box.cls[0])] == "car": 
-                yolo_cars.append(box.xyxy.detach().cpu())
-                yolo_conf.append(box.conf.detach().cpu())
+            if results.names[int(box.cls[0])] == "car":
+                conf = float(box.conf.detach().cpu())
+                if conf > 0.4:
+                    yolo_cars.append(box.xyxy.detach().cpu())
+                    yolo_conf.append(float(box.conf.detach().cpu()))
         sorted_cars = []
         sorted_conf = []
         if len(yolo_cars) > 2:

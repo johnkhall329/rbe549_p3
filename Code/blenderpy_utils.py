@@ -459,10 +459,8 @@ def insert_vehicle(asset_name, location, rotation, signal, blender_assets):
                 if i == IDX_BRAKE and is_braking:
                     is_active = True
                 elif i == IDX_LEFT and is_turning and is_left:
-                    print('turn')
                     is_active = True
                 elif i == IDX_RIGHT and is_turning and not is_left:
-                    print('turn')
                     is_active = True
 
                 # Update the Shader Nodes
@@ -474,7 +472,6 @@ def insert_vehicle(asset_name, location, rotation, signal, blender_assets):
                     if principled and is_active:
                         # Set Emission Strength
                         # If active, set to 10.0 (high for bloom/glow), otherwise 0.0
-                        print('set_high')
                         principled.inputs['Emission Strength'].default_value = 1.0
                         
             
