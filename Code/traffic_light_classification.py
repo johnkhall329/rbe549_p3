@@ -121,7 +121,7 @@ def classify_light(image, box):
             light["shape"] = label
 
             details["light_0"] = light
-            print(details)
+            # print(details)
             return details
         else:
             details['qt'] = 0
@@ -156,7 +156,7 @@ def classify_light(image, box):
 
         details[f"light_{i}"] = light
 
-    print(details)
+    # print(details)
 
     return details
 

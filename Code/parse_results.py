@@ -53,14 +53,42 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
         
         xmin, ymin, xmax, ymax = map(int, box.tolist())
 
-
-
         y_coords, x_coords = np.where(mask == 1)
 
         if len(x_coords) > 0:
             x_center = x_coords.mean()
             y_center = y_coords.mean()
-            z_depth = depth_results[y_coords, x_coords].mean()
+            depth_results_masked = depth_results[y_coords, x_coords]
+
+            # extra filtering for depth
+            if len(x_coords) > 500:
+                margins = len(x_coords)//10
+                depth_results_sorted = np.sort(depth_results_masked)
+                depth_results_filtered = depth_results_sorted[margins:-margins]
+                z_depth = depth_results_filtered.mean()
+
+                # Increase depth for thick vehicles
+                if label in {"sedan", "hatchback", "suv", "pickup", "truck", "box"}:
+                    close_depths = depth_results_filtered[:(2*margins)]
+                    far_depths = depth_results_filtered[-(2*margins):]
+
+                    mean_close = close_depths.mean()
+                    mean_far = far_depths.mean()
+
+                    depth_range = mean_far - mean_close
+
+                    if depth_range < 0.5:
+                        z_depth = mean_close
+                        z_depth += 4 if label == "box" else 2.5
+                    else:
+                        z_depth = (mean_close + mean_far)/2
+
+            else:
+                # This should not happen
+                print('WARNING: empty mask on object')
+                z_depth = depth_results_masked.mean()
+
+
         else:
             # Using bounding box center if there is an error. This shouldn't come up ideally
             x_center, y_center = ((xmax + xmin)//2), ((ymax + ymin)//2)
@@ -94,9 +122,9 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                 label = 'speed limit'
 
         contin = True
-        if abs(blender_x) > 30:
+        if abs(blender_x) > 50:
             if label == "traffic light":
-                blender_x = 30
+                blender_x = 50
             else:
                 contin = False
 
