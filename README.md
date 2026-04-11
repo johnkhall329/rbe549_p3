@@ -25,3 +25,8 @@ https://github.com/ruhyadi/YOLO3D
 Pedestrian Pose Detection:
 https://github.com/shubham-goel/4D-Humans
 https://github.com/sampepose/smpl_models/blob/master/SMPL_NEUTRAL.pkl
+
+MemFlow:
+https://github.com/DQiaole/MemFlow.git
+You will need to edit the files within the Inference folder to change the import statements.
+Just delete inference from `from inference.memory_manager_skflow import MemoryManager`
