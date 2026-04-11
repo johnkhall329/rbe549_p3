@@ -42,7 +42,7 @@ LABEL_MAP_DINO = {
 }
 
 
-def save_dino_results_to_json(image, object_detection_results, depth_results, lane_results, args, K, extrinsics):
+def save_dino_results_to_json(image, object_detection_results, depth_results, lane_results, motion_results, args, K, extrinsics):
     scene_objects = {}
 
     for box, mask, score, label, detail in zip(object_detection_results["new_boxes"], 
@@ -54,6 +54,8 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
         xmin, ymin, xmax, ymax = map(int, box.tolist())
 
         y_coords, x_coords = np.where(mask == 1)
+
+        motion = None
 
         if len(x_coords) > 0:
             x_center = x_coords.mean()
@@ -68,6 +70,7 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                 z_depth = depth_results_filtered.mean()
 
                 # Increase depth for thick vehicles
+                # Also find the optical flow of mask
                 if label in {"sedan", "hatchback", "suv", "pickup", "truck", "box"}:
                     close_depths = depth_results_filtered[:(2*margins)]
                     far_depths = depth_results_filtered[-(2*margins):]
@@ -82,6 +85,10 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                         z_depth += 4 if label == "box" else 2.5
                     else:
                         z_depth = (mean_close + mean_far)/2
+
+                    # Optical Flow
+                    obj_motion = motion_results[y_coords, x_coords].mean(axis=2)
+                    motion = obj_motion
 
             else:
                 # This should not happen

@@ -86,7 +86,7 @@ def main(args):
 
     lane_detector = LaneDetector(device='cpu')
 
-    flow_detector = FlowDetector()
+    flow_detector = FlowDetector(device='cpu')
 
     os.makedirs("./Output", exist_ok=True)
     asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))
@@ -118,13 +118,25 @@ def main(args):
 
         for frame_i, frames in enumerate(image_gen):
             prev_frame, frame = frames
+
+
+
+            im_1 = "optical_test_4frame1.png"
+            im_2 = "optical_test_4frame2.png"
+            test_dir = "P3Data/Sequences/test/optical_flow_test/"
+            image_list = [cv2.imread(f"{test_dir}{im_1}", cv2.IMREAD_COLOR), cv2.imread(f"{test_dir}{im_2}", cv2.IMREAD_COLOR)]
+
+            prev_frame, frame = image_list
+
             object_results, annotated_img = object_detector.predict(frame)
             depth_im = depth_predictor.predict(frame)
 
             lanes_im, lane_results = lane_detector.detect(frame, K, extrinsics)
 
+            motion = flow_detector.predict([prev_frame, frame], save=True)
+
             # save_yolo_results_to_json(object_results, depth_im, lane_results, args, K)
-            save_dino_results_to_json(frame, object_results, depth_im, lane_results, args, K, extrinsics)
+            save_dino_results_to_json(frame, object_results, depth_im, lane_results, motion, args, K, extrinsics)
 
             # plt.imsave(f'Output/output{frame_i}_bounded.jpg', annotated_img)
             # plt.imsave(f'Output/output{frame_i}_gdino.jpg', dino_img)
