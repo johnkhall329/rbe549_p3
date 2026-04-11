@@ -14,7 +14,7 @@ def get_images_from_scene(args):
 
         for path in image_paths:
             im = cv2.imread(path, cv2.IMREAD_COLOR)
-            yield im
+            yield im, None
 
     else:
         undist_videos_path = os.path.abspath(os.path.join(args.data_path+'Sequences/', args.sequence, "Undist"))
@@ -29,12 +29,17 @@ def get_images_from_scene(args):
 
         i = 0
         try:
+            frame = None
             while True:
-                ret, frame = cap.read()
+                if frame is None: 
+                    ret, frame = cap.read()
+                else:
+                    frame = next_frame
+                    ret, next_frame = cap.read()
                 if not ret:
                     break
                 if i % args.stride == 0:
-                    yield frame
+                    yield frame, next_frame
                 i += 1
         finally:
             cap.release()

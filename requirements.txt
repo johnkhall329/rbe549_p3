@@ -9,3 +9,5 @@ easyocr
 rembg
 supervision
 RapidFuzz
+loguru
+h5py

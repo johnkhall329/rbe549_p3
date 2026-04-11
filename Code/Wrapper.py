@@ -14,6 +14,7 @@ from parse_results import save_dino_results_to_json
 from depth_predictor import DepthPredictor
 from object_detector import ObjectDetector, ObjectDetectorGroundedDINO
 from lane_detector import LaneDetector
+from flow_detection import FlowDetector
 
 CLEAR = "clear\n"
 CLOSE = "close\n"
@@ -84,6 +85,9 @@ def main(args):
     object_detector = ObjectDetectorGroundedDINO(camera_calib=K, device='cpu')
 
     lane_detector = LaneDetector(device='cpu')
+
+    flow_detector = FlowDetector()
+
     os.makedirs("./Output", exist_ok=True)
     asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))
     # cmd = [os.path.expanduser("~")+args.blender_path, 
@@ -112,7 +116,8 @@ def main(args):
         fourcc = cv2.VideoWriter_fourcc(*'mp4v') # Codec for .mp4
         video_writer = None
 
-        for frame_i, frame in enumerate(image_gen):
+        for frame_i, frames in enumerate(image_gen):
+            frame, next_frame = frames
             object_results, annotated_img = object_detector.predict(frame)
             depth_im = depth_predictor.predict(frame)
 
@@ -173,8 +178,8 @@ def main(args):
 def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
-    parser.add_argument('--sequence',default='test', help="Select which sequence to generate visuals for")
-    parser.add_argument('--stride', default=200, help="How many frames to skip in video")
+    parser.add_argument('--sequence',default='trimmed', help="Select which sequence to generate visuals for")
+    parser.add_argument('--stride', default=24, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
     parser.add_argument('--headless', default=True)
