@@ -1,5 +1,6 @@
 import os
 import json
+import sys
 import subprocess
 import argparse
 import cv2
@@ -8,6 +9,8 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
+repo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "Modules"))
+sys.path.append(repo_path)
 
 from parse_video import *
 from parse_results import save_dino_results_to_json
@@ -86,7 +89,7 @@ def main(args):
 
     lane_detector = LaneDetector(device='cpu')
 
-    flow_detector = FlowDetector()
+    # flow_detector = FlowDetector()
 
     os.makedirs("./Output", exist_ok=True)
     asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))

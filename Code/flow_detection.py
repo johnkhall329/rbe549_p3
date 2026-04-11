@@ -1,21 +1,19 @@
 import os
 import sys
 
-repo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "Modules", "MemFlow"))
-sys.path.append(repo_path)
-
 from loguru import logger as loguru_logger
 import numpy as np
 import torch
 import random
 from PIL import Image
 
-from core.Networks import build_network
-from core.utils import flow_viz
-from core.utils import frame_utils
-from core.utils.utils import InputPadder, forward_interpolate
-from inference.inference_core_skflow import InferenceCore as inference_core
-from configs.kitti_memflownet_t import get_cfg
+
+from MemFlowModule.core.Networks import build_network
+from MemFlowModule.core.utils import flow_viz
+from MemFlowModule.core.utils import frame_utils
+from MemFlowModule.core.utils.utils import InputPadder, forward_interpolate
+from MemFlowModule.inference.inference_core_skflow import InferenceCore as inference_core
+from MemFlowModule.configs.kitti_memflownet_t import get_cfg
 
 class FlowDetector():
     def __init__(self):

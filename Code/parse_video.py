@@ -33,6 +33,8 @@ def get_images_from_scene(args):
             while True:
                 if frame is None: 
                     ret, frame = cap.read()
+                    if ret:
+                        ret, next_frame = cap.read()
                 else:
                     frame = next_frame
                     ret, next_frame = cap.read()
