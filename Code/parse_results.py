@@ -128,7 +128,7 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
             else:
                 contin = False
 
-        if abs(blender_y) > 25:
+        if abs(blender_y) > 40:
             contin = False
 
         if contin:
