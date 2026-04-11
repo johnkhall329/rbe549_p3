@@ -1,5 +1,6 @@
 import os
 import sys
+import cv2
 
 from loguru import logger as loguru_logger
 import numpy as np
@@ -23,10 +24,14 @@ import inference_core_skflow as inference_core
 
 class FlowDetector():
     def __init__(self, device='cpu'):
-        cfg = get_cfg()
-        self.model = build_network(cfg)
+        self.cfg = get_cfg()
+        self.device = device
+        if device == 'cpu':
+            self.model = build_network(self.cfg)
+        elif device == 'cuda':
+            self.model = build_network(self.cfg).cuda()
 
-        ckpt = torch.load('./Models/MemFlowNet_T_kitti.pth', map_location='cpu')
+        ckpt = torch.load('./Models/MemFlowNet_T_kitti.pth', map_location='cpu', weights_only=True)
         ckpt_model = ckpt['model'] if 'model' in ckpt else ckpt
 
         if 'module' in list(ckpt_model.keys())[0]:
@@ -38,6 +43,54 @@ class FlowDetector():
 
         self.model.eval()
 
+    def predict(self, image_list, save=False):
+        imgs = [cv2.cvtColor(im, cv2.COLOR_BGR2RGB) for im in image_list]
+        imgs = [np.array(img).astype(np.uint8) for img in imgs]
+        imgs = [torch.from_numpy(img).permute(2, 0, 1).float() for img in imgs]
+        images = torch.stack(imgs).to(self.device)
+
+        processor = inference_core.InferenceCore(self.model, config=self.cfg)
+        # 1, T, C, H, W
+        if self.device == 'cuda':
+            images = images.cuda().unsqueeze(0)
+        elif self.device == 'cpu':
+            images = images.unsqueeze(0)
+
+        padder = InputPadder(images.shape)
+        images = padder.pad(images)
+
+        images = 2 * (images / 255.0) - 1.0
+        flow_prev = None
+        results = []
+        print(f"start inference...")
+        with torch.no_grad():
+            for ti in range(images.shape[1] - 1):
+                print('processer step')
+                flow_low, flow_pre = processor.step(images[:, ti:ti + 2], end=(ti == images.shape[1] - 2),
+                                                    add_pe=('rope' in self.cfg and self.cfg.rope), flow_init=flow_prev)
+                print('unpad')
+                flow_pre = padder.unpad(flow_pre[0]).cpu()
+                print('flow pre')
+                results.append(flow_pre.permute(1, 2, 0).detach().numpy())
+
+        flow_np = results[0]
+        
+        if save:
+            flow_img = flow_viz.flow_to_image(flow_np)
+            image = Image.fromarray(flow_img)
+            image.save('Output/flow.jpg')
+
+        return flow_np
+
+
+
 
 if __name__ == "__main__":
-    flow_det = FlowDetector()
+    im_1 = "optical_test_4frame1.png"
+    im_2 = "optical_test_4frame2.png"
+    test_dir = "P3Data/Sequences/test/optical_flow_test/"
+    image_list = [cv2.imread(f"{test_dir}{im_1}", cv2.IMREAD_COLOR), cv2.imread(f"{test_dir}{im_2}", cv2.IMREAD_COLOR)]
+    
+    flow_det = FlowDetector(device='cpu')
+
+    flow_det.predict(image_list)
