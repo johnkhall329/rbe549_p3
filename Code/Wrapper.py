@@ -117,7 +117,7 @@ def main(args):
         video_writer = None
 
         for frame_i, frames in enumerate(image_gen):
-            frame, next_frame = frames
+            prev_frame, frame = frames
             object_results, annotated_img = object_detector.predict(frame)
             depth_im = depth_predictor.predict(frame)
 
@@ -178,7 +178,7 @@ def main(args):
 def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
-    parser.add_argument('--sequence',default='trimmed', help="Select which sequence to generate visuals for")
+    parser.add_argument('--sequence',default='Trimmed', help="Select which sequence to generate visuals for")
     parser.add_argument('--stride', default=24, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")

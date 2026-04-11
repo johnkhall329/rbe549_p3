@@ -3,6 +3,8 @@ import os
 from glob import glob
 import json
 
+FRAMES_BACK = 4
+
 # Generator function to save memory
 def get_images_from_scene(args):
     if args.sequence == 'test':
@@ -29,19 +31,18 @@ def get_images_from_scene(args):
 
         i = 0
         try:
-            frame = None
+            prev_frame = None
             while True:
-                if frame is None: 
-                    ret, frame = cap.read()
-                    if ret:
-                        ret, next_frame = cap.read()
-                else:
-                    frame = next_frame
-                    ret, next_frame = cap.read()
+                ret, frame = cap.read()
+                    
                 if not ret:
                     break
+
                 if i % args.stride == 0:
-                    yield frame, next_frame
+                    yield prev_frame, frame
+                elif (i + FRAMES_BACK) % args.stride == 0:
+                    prev_frame = frame
+                
                 i += 1
         finally:
             cap.release()

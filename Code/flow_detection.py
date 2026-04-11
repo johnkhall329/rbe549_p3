@@ -22,9 +22,9 @@ sys.path.append(repo_path)
 import inference_core_skflow as inference_core
 
 class FlowDetector():
-    def __init__(self):
+    def __init__(self, device='cpu'):
         cfg = get_cfg()
-        self.model = build_network(cfg).cuda()
+        self.model = build_network(cfg)
 
         ckpt = torch.load('./Models/MemFlowNet_T_kitti.pth', map_location='cpu')
         ckpt_model = ckpt['model'] if 'model' in ckpt else ckpt
@@ -37,3 +37,7 @@ class FlowDetector():
             self.model.load_state_dict(ckpt_model, strict=True)
 
         self.model.eval()
+
+
+if __name__ == "__main__":
+    flow_det = FlowDetector()
