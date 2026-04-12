@@ -66,6 +66,8 @@ def handle_command(cmd, client_conn):
                         rot = v_info.get("rotation", [0.0,0.0,0.0])
                         signal = v_info.get("signals", (False, False, False))
                         blenderpy_utils.insert_vehicle(asset_name, loc, rot, signal, blender_assets)
+                elif asset_name == "SceneDir":
+                    pass
                 else:
                     for info in asset_instances:
                         loc = info.get("location", [0.0,0.0,0.0])

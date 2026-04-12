@@ -86,14 +86,14 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                     else:
                         z_depth = (mean_close + mean_far)/2
 
-                    # Optical Flow
-                    obj_motion = motion_results[y_coords, x_coords].mean(axis=2)
-                    motion = obj_motion
-
             else:
-                # This should not happen
+                # This should happen with smaller/further objects
                 print('WARNING: empty mask on object')
                 z_depth = depth_results_masked.mean()
+
+            
+            # Optical Flow of Object
+            motion = motion_results[y_coords, x_coords].mean(axis=0)
 
 
         else:
@@ -142,7 +142,8 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
             if label not in LABEL_MAP_DINO.keys():
                 continue
 
-            obj_dict = {"location": [float(blender_x), float(blender_y), float(blender_z)]}
+            obj_dict = {"location": [float(blender_x), float(blender_y), float(blender_z)],
+                        "motion": motion}
 
             if label == "speed limit": obj_dict["speed"] = detail.get("speed","")
             # Pedestrian Pose Parsing
@@ -242,6 +243,28 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                 scene_objects[real_label] = []
 
             scene_objects[real_label].append(obj_dict)
+
+
+    # calc avg motion
+    avg_stationary_motion = np.array([0.0,0.0], dtype=np.float32)
+    num_stationary = 0
+    for k, v_list in scene_objects.items():
+        if k not in {"SedanAndHatchback", "SUV", "PickupTruck", "Truck", "Bicycle", "Pedestrian", "Motorcycle"}:
+            for obj_dict in v_list:
+                if obj_dict.get("motion", None) is not None:
+                    avg_stationary_motion += obj_dict["motion"]
+                    num_stationary += 1
+    
+    avg_stationary_motion /= num_stationary
+
+    # Takeaway avg motion from all cars
+    for k, v_list in scene_objects.items():
+        for i, obj_dict in enumerate(v_list):
+            if obj_dict.get("motion", None) is not None:
+                actual_motion = obj_dict["motion"] - avg_stationary_motion
+                scene_objects[k][i]["motion"] = actual_motion.tolist()
+
+    scene_objects["SceneDir"] = avg_stationary_motion.tolist()
 
     if len(lane_results) > 0:
         scene_objects["Lanes"] = lane_results

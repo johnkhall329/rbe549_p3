@@ -44,6 +44,9 @@ class FlowDetector():
         self.model.eval()
 
     def predict(self, image_list, save=False):
+        init_height, init_width = image_list[0].shape[:2]
+        image_list = [cv2.resize(img, (0, 0), fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA) for img in image_list]
+
         imgs = [cv2.cvtColor(im, cv2.COLOR_BGR2RGB) for im in image_list]
         imgs = [np.array(img).astype(np.uint8) for img in imgs]
         imgs = [torch.from_numpy(img).permute(2, 0, 1).float() for img in imgs]
@@ -74,13 +77,17 @@ class FlowDetector():
                 results.append(flow_pre.permute(1, 2, 0).detach().numpy())
 
         flow_np = results[0]
+
+        flow_np = cv2.resize(flow_np, (init_width, init_height), interpolation=cv2.INTER_LINEAR)
+        
+        flow_img = None
         
         if save:
             flow_img = flow_viz.flow_to_image(flow_np)
             image = Image.fromarray(flow_img)
             image.save('Output/flow.jpg')
 
-        return flow_np
+        return flow_np, flow_img
 
 
 
@@ -93,4 +100,5 @@ if __name__ == "__main__":
     
     flow_det = FlowDetector(device='cpu')
 
-    flow_det.predict(image_list)
+    flow_out = flow_det.predict(image_list, save=True)
+    print(flow_out.shape)

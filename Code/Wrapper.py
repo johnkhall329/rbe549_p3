@@ -119,21 +119,16 @@ def main(args):
         for frame_i, frames in enumerate(image_gen):
             prev_frame, frame = frames
 
-
-
-            im_1 = "optical_test_4frame1.png"
-            im_2 = "optical_test_4frame2.png"
-            test_dir = "P3Data/Sequences/test/optical_flow_test/"
-            image_list = [cv2.imread(f"{test_dir}{im_1}", cv2.IMREAD_COLOR), cv2.imread(f"{test_dir}{im_2}", cv2.IMREAD_COLOR)]
-
-            prev_frame, frame = image_list
-
             object_results, annotated_img = object_detector.predict(frame)
             depth_im = depth_predictor.predict(frame)
 
             lanes_im, lane_results = lane_detector.detect(frame, K, extrinsics)
 
-            motion = flow_detector.predict([prev_frame, frame], save=True)
+            if prev_frame is not None:
+                motion, flow_im = flow_detector.predict([prev_frame, frame], save=True)
+            else:
+                motion = np.zeros((frame.shape[0], frame.shape[1], 2), dtype=np.float32)
+                flow_im = np.zeros_like(frame)
 
             # save_yolo_results_to_json(object_results, depth_im, lane_results, args, K)
             save_dino_results_to_json(frame, object_results, depth_im, lane_results, motion, args, K, extrinsics)
@@ -155,12 +150,15 @@ def main(args):
 
             blender_frame = cv2.imread(f"./Output/{args.sequence}.png")
 
+            flow_bgr = cv2.cvtColor(flow_im, cv2.COLOR_RGB2BGR)
+            flow_h, flow_w = flow_bgr.shape[:2]
+
             bounded_bgr = cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR)
             bounded_h, bounded_w = bounded_bgr.shape[:2]
 
             blender_resized = cv2.resize(blender_frame, (bounded_w, bounded_h), interpolation=cv2.INTER_AREA)
 
-            combined_im = np.concatenate([bounded_bgr, blender_resized], axis=1)
+            combined_im = np.concatenate([bounded_bgr, blender_resized, flow_bgr], axis=1)
 
             if video_writer is None:
                 height, width, _ = combined_im.shape
@@ -191,7 +189,7 @@ def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
     parser.add_argument('--sequence',default='Trimmed', help="Select which sequence to generate visuals for")
-    parser.add_argument('--stride', default=24, help="How many frames to skip in video")
+    parser.add_argument('--stride', default=200, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
     parser.add_argument('--headless', default=True)
