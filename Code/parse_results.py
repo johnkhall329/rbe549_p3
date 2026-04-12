@@ -103,12 +103,20 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                 x_center, y_center = kpts[8]
             else:
                 other_box_idx = detail[2]
-                other_box = object_detection_results["new_boxes"][other_box_idx]
-                xmin, ymin, xmax, ymax = map(int, other_box.tolist())
+                other_mask = object_detection_results["masks"][other_box_idx]
 
-                x_center, y_center = ((xmax + xmin)//2), ((ymax + ymin)//2)
+                y_coords, x_coords = np.where(other_mask == 1)
                 
-                z_depth = depth_results[ymin:ymax, xmin:xmax].mean()
+                x_center = x_coords.mean()
+                y_center = y_coords.mean()
+                depth_results_masked = depth_results[y_coords, x_coords]
+
+                # extra filtering for depth
+                if len(x_coords) > 500:
+                    margins = len(x_coords)//10
+                    depth_results_sorted = np.sort(depth_results_masked)
+                    depth_results_filtered = depth_results_sorted[margins:-margins]
+                    z_depth = depth_results_filtered.mean()
 
             blender_x, blender_y, blender_z = locate_3D_point(z_depth, x_center, y_center, K, extrinsics)
             blender_z = 0

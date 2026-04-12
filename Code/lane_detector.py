@@ -53,7 +53,7 @@ class LaneDetector():
         self.yolop.to(self.device).eval()
 
         self.max_blob_size = 500
-        self.yellow_thresh = 140
+        self.yellow_thresh = 135
 
         os.makedirs('./Output/road_signs', exist_ok=True)
 
@@ -78,6 +78,7 @@ class LaneDetector():
         num_lanes, labels_im = cv2.connectedComponents(filtered_mask)
 
         fused_viz = cv2.cvtColor(orig_image, cv2.COLOR_RGB2BGR)
+        fused_lanes = fused_viz.copy()
 
         results = []
         for lane_id in range(1,num_lanes):
@@ -114,9 +115,13 @@ class LaneDetector():
                 colored_lane = np.zeros_like(fused_viz)
                 # colored_lane[lane_blob == 1] = color
                 colored_lane[cv2.dilate(skel_lane, np.ones((3,3)))==255] = color
+
+                color_mask = np.zeros_like(fused_viz)
+                color_mask[lane_blob==1] = color
                 # if lane_color == 'yellow':
                 #     print("sent yellow")
                 fused_viz = cv2.addWeighted(fused_viz, 1.0, colored_lane, 0.8, 0)
+                fused_lanes = cv2.addWeighted(fused_lanes, 1.0, color_mask, 0.8, 0)
 
                 world_points = self.convert_to_3D(skel_lane, K, extrinsics)
                 curve_model, in_idxs, x_dir = ransac_curve(world_points)
@@ -221,7 +226,7 @@ class LaneDetector():
         avg_yellow_score = np.mean(lane_pixels)
         
         # Thresholding 128 (neutral) + a small buffer for safety
-        if avg_yellow_score > self.yellow_thresh and avg_yellow_score-other_mask.mean()>5.0: 
+        if avg_yellow_score > self.yellow_thresh and avg_yellow_score-other_mask.mean()>3.0: 
             return "yellow"
         else:
             return "white"

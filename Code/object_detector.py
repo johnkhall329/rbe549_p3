@@ -283,7 +283,7 @@ class ObjectDetectorGroundedDINO():
         )
 
         # comes out as (c, 1, h, w)
-        masks = masks.squeeze(1)
+        if len(masks.shape) > 3: masks = masks.squeeze(1)
 
         # Plotting
         class_ids = np.array(list(range(len(new_labels))))
