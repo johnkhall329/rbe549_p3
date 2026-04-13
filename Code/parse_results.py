@@ -62,9 +62,29 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
     center_point1 = np.array([im_w//2, im_h//2])
     
     center_point2 = np.array([im_w//2, im_h//3])
+
+
+    # calc scene motion
+    motion_h, motion_w = motion_results.shape[:2]
+
+    v_edge = motion_h//10
+    bottom_edge = motion_results[-v_edge:, :]
+
+    avg_scene_direction = np.average(bottom_edge, axis=(0,1))
+
+    avg_scene_norms = np.linalg.norm(bottom_edge, axis=2)
+
+    user_dir = np.zeros(2)
+    if np.mean(avg_scene_norms > 4) > 0.4:
+        user_dir = np.array([avg_scene_direction[1], -avg_scene_direction[0]])
+        mag = np.linalg.norm(user_dir)
+        if mag > 15:
+            user_dir = 2*user_dir/mag
+        elif mag > 7.5:
+            user_dir = user_dir/mag
+        elif mag > 2:
+            user_dir = 0.4*user_dir/mag
     
-
-
 
     for box, mask, score, label, detail in zip(object_detection_results["new_boxes"], 
                                                object_detection_results["masks"], 
@@ -149,7 +169,6 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
 
                     delta_bx = fbx - bx
                     delta_by = fby - by
-                    delta_bz = fbz - bz
 
                     future_pix2 = np.array([x_center, y_center]) + motion
 
@@ -157,7 +176,20 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
 
                     delta_bx2 = fbx2 - bx
                     delta_by2 = fby2 - by
-                    delta_bz2 = fbz2 - bz
+
+                    world_dir_isolated = np.array([delta_bx2, delta_by2])
+
+                    magnitude = np.linalg.norm(world_dir_isolated)
+
+                    if magnitude > 0.4:
+                        true_dir = 2*(world_dir_isolated/magnitude)
+                    elif magnitude > 0.05:
+                        true_dir = world_dir_isolated/magnitude
+                    else:
+                        true_dir = np.zeros(2)
+
+                    world_true_dir = true_dir - user_dir
+
 
 
             else:
@@ -217,11 +249,18 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
             if motion_diff is not None:
                 obj_dict["motion"] = motion.tolist()
                 obj_dict["bground_motion"] = background_motion.tolist()
-                obj_dict["world_vec"] = [delta_bx, delta_by, delta_bz]
-                obj_dict["world_vec_isolated"] = [delta_bx2, delta_by2, delta_bz2]
+                obj_dict["world_vec"] = [delta_bx, delta_by]
+                obj_dict["world_vec_isolated"] = [delta_bx2, delta_by2]
 
-                obj_dict["parked"] = False
-                obj_dict["direction"] = [1, 0]
+
+                if np.norm(world_true_dir) < 0.5:
+                    obj_dict["parked"] = True
+                else:
+                    obj_dict["parked"] = False
+
+                
+                obj_dict["iso_direction"] = true_dir.tolist()
+                obj_dict["direction"] = world_true_dir.tolist()
 
             if label == "speed limit": obj_dict["speed"] = detail.get("speed","")
             # Pedestrian Pose Parsing
@@ -322,16 +361,8 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
 
             scene_objects[real_label].append(obj_dict)
 
-
-    # calc scene motion
-    motion_h, motion_w = motion_results.shape[:2]
-
-    v_edge = motion_h//10
-    bottom_edge = motion_results[-v_edge:, :]
-
-    avg_scene_direction = np.average(bottom_edge, axis=(0,1))
-
-    scene_objects["SceneDir"] = avg_scene_direction.tolist()
+    scene_objects["SceneDir"] = user_dir.tolist()
+    scene_objects["SceneDirPx"] = avg_scene_direction.tolist()
 
     if len(lane_results) > 0:
         scene_objects["Lanes"] = lane_results
