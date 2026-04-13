@@ -42,8 +42,29 @@ LABEL_MAP_DINO = {
 }
 
 
-def save_dino_results_to_json(image, object_detection_results, depth_results, lane_results, motion_results, args, K, extrinsics):
+def save_dino_results_to_json(image, object_detection_results, depth_results, lane_results, motion_results, args, K, extrinsics, frame_num):
     scene_objects = {}
+    im_h, im_w = image.shape[:2]
+
+    # Find horizon for motion calculations:
+    vertical_maximums = depth_results.max(axis=1)
+    
+    # Initial Guess should get overwritten
+    horizon = vertical_maximums.argmax()
+
+    # Once close to max depth, consider horizon
+    max_depth = vertical_maximums.max()
+    for i in range(im_h - 1, -1, -1):
+        if vertical_maximums[i] > 0.95*max_depth:
+            horizon = i
+            break
+
+    center_point1 = np.array([im_w//2, im_h//2])
+    
+    center_point2 = np.array([im_w//2, im_h//3])
+    
+
+
 
     for box, mask, score, label, detail in zip(object_detection_results["new_boxes"], 
                                                object_detection_results["masks"], 
@@ -53,14 +74,19 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
         
         xmin, ymin, xmax, ymax = map(int, box.tolist())
 
-        y_coords, x_coords = np.where(mask == 1)
+        cropped_mask = mask[ymin:ymax, xmin:xmax]
+        cropped_depth = depth_results[ymin:ymax, xmin:xmax]
 
-        motion = None
+        y_coords, x_coords = np.where(cropped_mask == 1)
+
+        global_y_coords, global_x_coords = np.where(mask == 1)
+
+        motion_diff = None
 
         if len(x_coords) > 0:
-            x_center = x_coords.mean()
-            y_center = y_coords.mean()
-            depth_results_masked = depth_results[y_coords, x_coords]
+            x_center = global_x_coords.mean()
+            y_center = global_y_coords.mean()
+            depth_results_masked = cropped_depth[y_coords, x_coords]
 
             # extra filtering for depth
             if len(x_coords) > 500:
@@ -85,15 +111,60 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                         z_depth += 4 if label == "box" else 2.5
                     else:
                         z_depth = (mean_close + mean_far)/2
+                    
+                    # Motion finding
+                    motion_results_cropped = motion_results[ymin:ymax, xmin:xmax]
+                    motion = motion_results_cropped[y_coords, x_coords].mean(axis=0)
+
+                    # Evaluate nearby background
+                    w_expand = int((xmax - xmin)*1.25)
+                    h_expand = int((ymax - ymin)*1.25)
+
+                    new_xmax = xmax + w_expand 
+                    new_xmin = xmin - w_expand
+                    new_ymax = ymax + h_expand
+                    new_ymin = ymin - h_expand
+
+                    new_xmax = max(0, min(new_xmax, im_w))
+                    new_xmin = max(0, min(new_xmin, im_h))
+                    new_ymax = max(0, min(new_ymax, im_w))
+                    new_ymin = max(0, min(new_ymin, im_h))
+
+                    motion_results_cropped_large = motion_results[new_ymin:new_ymax, new_xmin:new_xmax]
+                    expanded_mask_crop = mask[new_ymin:new_ymax, new_xmin:new_xmax]
+
+                    not_y_coords, not_x_coords = np.where(expanded_mask_crop == 0)
+
+                    background_motion = motion_results_cropped_large[not_y_coords, not_x_coords].mean(axis=0)
+
+                    motion_diff = motion - background_motion
+
+                    # World frame calcs instead
+
+                    bx, by, bz = locate_3D_point(z_depth, x_center, y_center, K, extrinsics)
+
+                    future_pix = np.array([x_center, y_center]) + motion_diff
+
+                    fbx, fby, fbz = locate_3D_point_given_world_height(bz, future_pix[0], future_pix[1], K, extrinsics)
+
+                    delta_bx = fbx - bx
+                    delta_by = fby - by
+                    delta_bz = fbz - bz
+
+                    future_pix2 = np.array([x_center, y_center]) + motion
+
+                    fbx2, fby2, fbz2 = locate_3D_point_given_world_height(bz, future_pix2[0], future_pix2[1], K, extrinsics)
+
+                    delta_bx2 = fbx2 - bx
+                    delta_by2 = fby2 - by
+                    delta_bz2 = fbz2 - bz
+
 
             else:
                 # This should happen with smaller/further objects
                 print('WARNING: empty mask on object')
                 z_depth = depth_results_masked.mean()
 
-            
-            # Optical Flow of Object
-            motion = motion_results[y_coords, x_coords].mean(axis=0)
 
 
         else:
@@ -142,8 +213,12 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
             if label not in LABEL_MAP_DINO.keys():
                 continue
 
-            obj_dict = {"location": [float(blender_x), float(blender_y), float(blender_z)],
-                        "motion": motion}
+            obj_dict = {"location": [float(blender_x), float(blender_y), float(blender_z)]}
+            if motion_diff is not None:
+                obj_dict["motion"] = motion.tolist()
+                obj_dict["bground_motion"] = background_motion.tolist()
+                obj_dict["world_vec"] = [delta_bx, delta_by, delta_bz]
+                obj_dict["world_vec_isolated"] = [delta_bx2, delta_by2, delta_bz2]
 
             if label == "speed limit": obj_dict["speed"] = detail.get("speed","")
             # Pedestrian Pose Parsing
@@ -245,26 +320,15 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
             scene_objects[real_label].append(obj_dict)
 
 
-    # calc avg motion
-    avg_stationary_motion = np.array([0.0,0.0], dtype=np.float32)
-    num_stationary = 0
-    for k, v_list in scene_objects.items():
-        if k not in {"SedanAndHatchback", "SUV", "PickupTruck", "Truck", "Bicycle", "Pedestrian", "Motorcycle"}:
-            for obj_dict in v_list:
-                if obj_dict.get("motion", None) is not None:
-                    avg_stationary_motion += obj_dict["motion"]
-                    num_stationary += 1
-    
-    avg_stationary_motion /= num_stationary
+    # calc scene motion
+    motion_h, motion_w = motion_results.shape[:2]
 
-    # Takeaway avg motion from all cars
-    for k, v_list in scene_objects.items():
-        for i, obj_dict in enumerate(v_list):
-            if obj_dict.get("motion", None) is not None:
-                actual_motion = obj_dict["motion"] - avg_stationary_motion
-                scene_objects[k][i]["motion"] = actual_motion.tolist()
+    v_edge = motion_h//10
+    bottom_edge = motion_results[-v_edge:, :]
 
-    scene_objects["SceneDir"] = avg_stationary_motion.tolist()
+    avg_scene_direction = np.average(bottom_edge, axis=(0,1))
+
+    scene_objects["SceneDir"] = avg_scene_direction.tolist()
 
     if len(lane_results) > 0:
         scene_objects["Lanes"] = lane_results
@@ -272,8 +336,11 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
     with open("Code/temp_scene.json", "w") as f:
         json.dump(scene_objects, f, indent=4)
 
+    with open(f"Code/temp_scene_{frame_num}.json", "w") as f:
+        json.dump(scene_objects, f, indent=4)
 
-def locate_3D_point(depth, u, v, K, extrinsics, max_depth=20):
+
+def locate_3D_point(depth, u, v, K, extrinsics):
     K_inv = np.linalg.inv(K)
     
     # Create homogeneous pixel vector
@@ -290,7 +357,28 @@ def locate_3D_point(depth, u, v, K, extrinsics, max_depth=20):
     
     return world_coords_m
 
-def locate_3D_point_old(depth, u, v, K, max_depth=20):
+def locate_3D_point_given_world_height(world_height, u, v, K, extrinsics):
+    K_inv = np.linalg.inv(K)
+    
+    # Create homogeneous pixel vector
+    pixel_coords = np.array([u, v, 1.0])
+    
+    # Back-project to normalized coordinates (z=1)
+    normalized_coords = K_inv @ pixel_coords
+
+    # rotate according to extrinsics
+    rn_coords = extrinsics[:3,:3] @ normalized_coords
+    
+    # scale the vector so that it reaches the given z value
+    height_diff = (world_height - extrinsics[2,3])
+    scale = height_diff/rn_coords[2] 
+
+    # Scale by depth to get coordinates in meters
+    world_coords_m = (rn_coords*scale) + extrinsics[:3, 3]
+    
+    return world_coords_m
+
+def locate_3D_point_old(depth, u, v, K):
     K_inv = np.linalg.inv(K)
     
     # Create homogeneous pixel vector

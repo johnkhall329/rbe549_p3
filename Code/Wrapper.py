@@ -18,7 +18,7 @@ from flow_detection import FlowDetector
 
 CLEAR = "clear\n"
 CLOSE = "close\n"
-FPS = 1
+FPS = 2
 
 def connect_to_blender(asset_path, args, host, port, retry_limit=10):
     attempt=0
@@ -131,7 +131,7 @@ def main(args):
                 flow_im = np.zeros_like(frame)
 
             # save_yolo_results_to_json(object_results, depth_im, lane_results, args, K)
-            save_dino_results_to_json(frame, object_results, depth_im, lane_results, motion, args, K, extrinsics)
+            save_dino_results_to_json(frame, object_results, depth_im, lane_results, motion, args, K, extrinsics, frame_i)
 
             # plt.imsave(f'Output/output{frame_i}_bounded.jpg', annotated_img)
             # plt.imsave(f'Output/output{frame_i}_gdino.jpg', dino_img)
@@ -151,7 +151,6 @@ def main(args):
             blender_frame = cv2.imread(f"./Output/{args.sequence}.png")
 
             flow_bgr = cv2.cvtColor(flow_im, cv2.COLOR_RGB2BGR)
-            flow_h, flow_w = flow_bgr.shape[:2]
 
             bounded_bgr = cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR)
             bounded_h, bounded_w = bounded_bgr.shape[:2]
@@ -189,7 +188,7 @@ def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
     parser.add_argument('--sequence',default='Trimmed', help="Select which sequence to generate visuals for")
-    parser.add_argument('--stride', default=200, help="How many frames to skip in video")
+    parser.add_argument('--stride', default=52, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
     parser.add_argument('--headless', default=True)

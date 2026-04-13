@@ -3,7 +3,7 @@ import os
 from glob import glob
 import json
 
-FRAMES_BACK = 4
+FRAMES_BACK = 3
 
 # Generator function to save memory
 def get_images_from_scene(args):
