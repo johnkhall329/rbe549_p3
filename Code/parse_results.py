@@ -220,6 +220,9 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                 obj_dict["world_vec"] = [delta_bx, delta_by, delta_bz]
                 obj_dict["world_vec_isolated"] = [delta_bx2, delta_by2, delta_bz2]
 
+                obj_dict["parked"] = False
+                obj_dict["direction"] = [1, 0]
+
             if label == "speed limit": obj_dict["speed"] = detail.get("speed","")
             # Pedestrian Pose Parsing
             if "person" in label:
