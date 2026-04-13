@@ -324,9 +324,6 @@ class ObjectDetectorGroundedDINO():
             return self.human_detector.detect_humans(image, box)
         elif label in {"sedan", "hatchback", "suv", "pickup", "truck", "box", "motorcycle", "bicycle"}:
             xmin, ymin, xmax, ymax = map(int, box.tolist())
-            bounds = [(xmin, ymin), (xmax, ymax)]
-            signals = detect_signals(image, bounds, self.daylight_thresh)
-            signals = tuple(map(bool, signals))
 
             raw_orientation = self.orient_anything_model.predict(image[ymin:ymax, xmin:xmax])
 
@@ -341,7 +338,7 @@ class ObjectDetectorGroundedDINO():
                 if abs(rot_val - degree) < 8:
                     rot_val = degree
 
-            return {"orientation": rot_val, "signals": signals}
+            return {"orientation": rot_val}
         elif label == 'road sign':
             xmin, ymin, xmax, ymax = map(int, box.tolist())
             crop = cv2.cvtColor(image[ymin:ymax, xmin:xmax], cv2.COLOR_RGB2BGR)

@@ -3,11 +3,12 @@ import numpy as np
 import torchvision
 import torch
 
-def detect_signals(image, bounds, daylight_thresh):
+def detect_signals(image, bounds, mask, daylight_thresh):
     daylight = predict_daylight(image, daylight_thresh)
     # hsv_slider(image[bounds[0][1]:bounds[1][1], bounds[0][0]:bounds[1][0]], daylight)
-
-    hsv_img = cv2.cvtColor(image[bounds[0][1]:bounds[1][1], bounds[0][0]:bounds[1][0]], cv2.COLOR_RGB2HSV)
+    mask = mask.astype(np.uint8)*255
+    masked = cv2.bitwise_and(image, image, mask = mask)
+    hsv_img = cv2.cvtColor(masked[bounds[0][1]:bounds[1][1], bounds[0][0]:bounds[1][0]], cv2.COLOR_RGB2HSV)
     brake_thresh = np.array([0,  75, 90, 19, 255, 255]) if daylight else np.array([0, 0, 206, 73, 56, 255])
     turn_thresh = np.array([20, 70, 127, 255, 255, 255]) if daylight else np.array([26, 0, 237, 106, 43, 255])
     img_filter = np.array([1,1])
