@@ -3,6 +3,16 @@
 
     "vehicles": ["SedanAndHatchback", "SUV", "PickupTruck", "Truck"],
 
+    "VehicleArrow":{
+        "Object":{
+            "Arrow":{
+                "scale": 0.5,
+                "offset":[0.0,0.0,0.086633],
+                "rotation":[0.0,0.0,0.0]
+            }
+        }
+    }, 
+
     "Dustbin":{
         "Object": {
             "Bin_Mesh.072":{
@@ -137,7 +147,8 @@
             "PickupTruck":{
                 "scale": 0.6,
                 "offset":[0.0,0.0,0.87],
-                "rotation":[90.0,0.0,180.0]
+                "rotation":[90.0,0.0,180.0],
+                "height": 1.9
             }
         }
     }, 
@@ -147,7 +158,8 @@
             "Car":{
                 "scale": 0.02,
                 "offset":[0.0,0.0,0.02],
-                "rotation":[0.0,0.0,90.0]
+                "rotation":[0.0,0.0,90.0],
+                "height": 1.5
             }
         }
     }, 
@@ -157,7 +169,8 @@
             "Jeep_3_":{
                 "scale": 3.5,
                 "offset":[0.0,0.0,0.0],
-                "rotation":[0.0,0.0,-90.0]
+                "rotation":[0.0,0.0,-90.0],
+                "height": 1.85
             }
         }
     }, 
@@ -167,7 +180,8 @@
             "Truck":{
                 "scale": 0.000964,
                 "offset":[0.0,0.0,0.0],
-                "rotation":[0.0,0.0,-90.0]
+                "rotation":[0.0,0.0,-90.0],
+                "height": 3.75
             }
         }
     }
