@@ -116,6 +116,7 @@ def preload_assets(asset_folder, asset_info):
         "turn_right": {"base_color": "#6F6600FF", "emission_color": "#FFEF06FF", "emission_strength": 1.0},
         "off_light": {"base_color": "#989898FF"},
         "stopped": {"base_color": "#B6B6B6FF"},
+        "parked": (0.714, 0.714, 0.714, 1.0),
         "moving": {"base_color": "#37384FFF"}
     }
     
@@ -425,7 +426,7 @@ def insert_speed_sign(name, location, rotation, speed, blender_collections):
         # else:
         #     main_mesh.scale = blender_collections["SpeedLimitSign"]["scale"]
 
-def insert_vehicle(asset_name, location, rotation, signal, blender_assets):
+def insert_vehicle(asset_name, location, rotation, signal, parked, direction, blender_assets):
     if asset_name in blender_assets:
         is_braking, is_turning, is_left = signal
         for model_name, model_info in blender_assets[asset_name].items():
@@ -440,10 +441,12 @@ def insert_vehicle(asset_name, location, rotation, signal, blender_assets):
             else:
                 new_inst.scale = model_info["scale"]
 
+            IDX_BASE = 0
             IDX_BRAKE = 1
             IDX_LEFT  = 2
             IDX_RIGHT = 3
-
+            
+            is_parked = False
             for i in range(len(new_inst.data.materials)):
                 old_mat = new_inst.data.materials[i]
                 if old_mat:
@@ -456,7 +459,11 @@ def insert_vehicle(asset_name, location, rotation, signal, blender_assets):
                 
                 # Logic to determine if this index should be "ON"
                 is_active = False
-                if i == IDX_BRAKE and is_braking:
+                
+                if i == IDX_BASE and parked is not None and parked:
+                    is_parked = True
+                    print('got parked')
+                elif i == IDX_BRAKE and is_braking:
                     is_active = True
                 elif i == IDX_LEFT and is_turning and is_left:
                     is_active = True
@@ -473,6 +480,21 @@ def insert_vehicle(asset_name, location, rotation, signal, blender_assets):
                         # Set Emission Strength
                         # If active, set to 10.0 (high for bloom/glow), otherwise 0.0
                         principled.inputs['Emission Strength'].default_value = 1.0
+                    elif principled and is_parked:
+                        print('set parked')
+                        principled.inputs['Base Color'].default_value = car_mats["parked"]
+
+            if not is_parked:
+                arrow_asset = blender_assets["VehicleArrow"]["Arrow"]
+                print(arrow_asset)
+                arrow_obj = arrow_asset["model"]
+                new_arrow = bpy.data.objects.new(name=f"Instance_VehicleArrow/Arrow", object_data=arrow_obj.data.copy())
+                bpy.context.scene.collection.objects.link(new_arrow)
+
+                new_arrow.location = [location[0], location[1], model_info.get("height", 0.0)+arrow_asset["offset"][2]]
+                angle = math.atan2(direction[1], direction[0])
+                new_arrow.rotation_euler = [0.0,0.0, angle]
+                new_arrow.scale = (arrow_asset["scale"], arrow_asset["scale"], arrow_asset["scale"])
                         
             
             

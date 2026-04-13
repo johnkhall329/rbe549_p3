@@ -65,7 +65,11 @@ def handle_command(cmd, client_conn):
                         loc = v_info.get("location", [0.0,0.0,0.0])
                         rot = v_info.get("rotation", [0.0,0.0,0.0])
                         signal = v_info.get("signals", (False, False, False))
-                        blenderpy_utils.insert_vehicle(asset_name, loc, rot, signal, blender_assets)
+
+                        parked = v_info.get("parked", None)
+                        direction = v_info.get("direction", [1.0, 0.0])
+                        
+                        blenderpy_utils.insert_vehicle(asset_name, loc, rot, signal, parked, direction, blender_assets)
                 elif "SceneDir" in asset_name:
                     pass
                 else:
