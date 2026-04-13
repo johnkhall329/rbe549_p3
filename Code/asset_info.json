@@ -17,6 +17,17 @@
         }
     },
 
+    "SpeedBump":{
+        "Object":{
+            "Cylinder":{
+                "scale": [0.25, 0.5, 2.0],
+                "offset":[0.0,0.75,0.0],
+                "rotation":[0.0,90.0,90.0]
+            }
+        }
+    }, 
+
+
     "Trashbin":{
         "Collection":{
             "trashbin":{

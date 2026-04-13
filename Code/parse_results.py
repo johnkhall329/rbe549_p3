@@ -38,7 +38,8 @@ LABEL_MAP_DINO = {
     "garbage bin":"trashbin",
     "bicycle": "Bicycle",
     "motorcycle": "Motorcycle",
-    "cone": "TrafficConeAndCylinder"
+    "cone": "TrafficConeAndCylinder", 
+    "speed bump": "SpeedBump"
 }
 
 
@@ -128,6 +129,8 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                 label = 'stop'
             elif sign_type == 'speed limit':
                 label = 'speed limit'
+            elif sign_type == 'speed bump':
+                label = 'speed bump'
 
         contin = True
         if abs(blender_x) > 50:
