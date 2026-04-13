@@ -46,24 +46,6 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
     scene_objects = {}
     im_h, im_w = image.shape[:2]
 
-    # Find horizon for motion calculations:
-    vertical_maximums = depth_results.max(axis=1)
-    
-    # Initial Guess should get overwritten
-    horizon = vertical_maximums.argmax()
-
-    # Once close to max depth, consider horizon
-    max_depth = vertical_maximums.max()
-    for i in range(im_h - 1, -1, -1):
-        if vertical_maximums[i] > 0.95*max_depth:
-            horizon = i
-            break
-
-    center_point1 = np.array([im_w//2, im_h//2])
-    
-    center_point2 = np.array([im_w//2, im_h//3])
-
-
     # calc scene motion
     motion_h, motion_w = motion_results.shape[:2]
 
@@ -78,12 +60,14 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
     if np.mean(avg_scene_norms > 4) > 0.4:
         user_dir = np.array([avg_scene_direction[1], -avg_scene_direction[0]])
         mag = np.linalg.norm(user_dir)
-        if mag > 15:
-            user_dir = 2*user_dir/mag
-        elif mag > 7.5:
-            user_dir = user_dir/mag
+        if mag > 21:
+            user_dir = 1.5*user_dir/mag
+        elif mag > 14:
+            user_dir = 1*user_dir/mag
+        elif mag > 7:
+            user_dir = 0.67*user_dir/mag
         elif mag > 2:
-            user_dir = 0.4*user_dir/mag
+            user_dir = 0.33*user_dir/mag
     
 
     for box, mask, score, label, detail in zip(object_detection_results["new_boxes"], 
@@ -101,7 +85,7 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
 
         global_y_coords, global_x_coords = np.where(mask == 1)
 
-        motion_diff = None
+        motion = None
 
         if len(x_coords) > 0:
             x_center = global_x_coords.mean()
@@ -136,39 +120,9 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                     motion_results_cropped = motion_results[ymin:ymax, xmin:xmax]
                     motion = motion_results_cropped[y_coords, x_coords].mean(axis=0)
 
-                    # Evaluate nearby background
-                    w_expand = int((xmax - xmin)*1.25)
-                    h_expand = int((ymax - ymin)*1.25)
-
-                    new_xmax = xmax + w_expand 
-                    new_xmin = xmin - w_expand
-                    new_ymax = ymax + h_expand
-                    new_ymin = ymin - h_expand
-
-                    new_xmax = max(0, min(new_xmax, im_w))
-                    new_xmin = max(0, min(new_xmin, im_h))
-                    new_ymax = max(0, min(new_ymax, im_w))
-                    new_ymin = max(0, min(new_ymin, im_h))
-
-                    motion_results_cropped_large = motion_results[new_ymin:new_ymax, new_xmin:new_xmax]
-                    expanded_mask_crop = mask[new_ymin:new_ymax, new_xmin:new_xmax]
-
-                    not_y_coords, not_x_coords = np.where(expanded_mask_crop == 0)
-
-                    background_motion = motion_results_cropped_large[not_y_coords, not_x_coords].mean(axis=0)
-
-                    motion_diff = motion - background_motion
-
                     # World frame calcs instead
 
                     bx, by, bz = locate_3D_point(z_depth, x_center, y_center, K, extrinsics)
-
-                    future_pix = np.array([x_center, y_center]) + motion_diff
-
-                    fbx, fby, fbz = locate_3D_point_given_world_height(bz, future_pix[0], future_pix[1], K, extrinsics)
-
-                    delta_bx = fbx - bx
-                    delta_by = fby - by
 
                     future_pix2 = np.array([x_center, y_center]) + motion
 
@@ -182,13 +136,15 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                     magnitude = np.linalg.norm(world_dir_isolated)
 
                     if magnitude > 0.4:
+                        true_dir = 3*(world_dir_isolated/magnitude)
+                    elif magnitude > 0.1:
                         true_dir = 2*(world_dir_isolated/magnitude)
-                    elif magnitude > 0.05:
+                    elif magnitude > 0.04:
                         true_dir = world_dir_isolated/magnitude
                     else:
                         true_dir = np.zeros(2)
 
-                    world_true_dir = true_dir - user_dir
+                    world_true_dir = true_dir + user_dir
 
 
 
@@ -246,14 +202,12 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                 continue
 
             obj_dict = {"location": [float(blender_x), float(blender_y), float(blender_z)]}
-            if motion_diff is not None:
+            if motion is not None:
                 obj_dict["motion"] = motion.tolist()
-                obj_dict["bground_motion"] = background_motion.tolist()
-                obj_dict["world_vec"] = [delta_bx, delta_by]
                 obj_dict["world_vec_isolated"] = [delta_bx2, delta_by2]
 
 
-                if np.norm(world_true_dir) < 0.5:
+                if np.linalg.norm(world_true_dir) < 1.1:
                     obj_dict["parked"] = True
                 else:
                     obj_dict["parked"] = False
