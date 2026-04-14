@@ -18,4 +18,4 @@ pip3 install -r requirements.txt
 #pip3 install -e Modules/Grounded-SAM-2/.
 pip3 list
 
-python3 Code/generate_scenes.py --sequence $RUN_NAME
+python3 Code/generate_scenes.py --sequence $RUN_NAME --stride 10
