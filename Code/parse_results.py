@@ -6,6 +6,7 @@ import os
 import math
 
 import glob
+from car_signal_detection import detect_signals
 
 LABEL_MAP_YOLO = {
     "car": "SedanAndHatchback",
@@ -116,6 +117,12 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
                         z_depth += 4 if label == "box" else 2.5
                     else:
                         z_depth = (mean_close + mean_far)/2
+
+                    xmin, ymin, xmax, ymax = map(int, box.tolist())
+                    bounds = [(xmin, ymin), (xmax, ymax)]
+                    signals = detect_signals(image, bounds, mask, 100.0)
+                    signals = tuple(map(bool, signals))
+                    detail["signals"] = signals
                     
                     # Motion finding
                     motion_results_cropped = motion_results[ymin:ymax, xmin:xmax]
@@ -232,9 +239,9 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
             if "person" in label:
                 # detail.apply_translation([bx, by, bz])
                 tmesh, k_pts = detail[:2]
-                prev_humans = glob.glob("./Output/humans/*.obj")
+                prev_humans = glob.glob(f"./Output/{args.sequence}/humans/*.obj")
                 id = len(prev_humans)
-                file_name = f'./Output/humans/{id}.obj'
+                file_name = f'./Output/{args.sequence}/humans/{id}.obj'
                 tmesh.export(file_name)
                 obj_dict["file location"] = file_name
 

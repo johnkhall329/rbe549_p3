@@ -266,7 +266,6 @@ def create_instance(asset_name, location, rotation, blender_assets, blender_coll
                 new_inst.scale = model_info["scale"]
             if asset_name == "TrafficSignal":
                 if material is None: material = "OFF"
-                print(material)
                 set_light_state(new_inst, material)    
             elif asset_name == "SpeedBump":
                 new_inst.location = [location[0], 0,0]
@@ -460,7 +459,6 @@ def insert_vehicle(asset_name, location, rotation, signal, parked, direction, bl
                 
                 if i == IDX_BASE and parked is not None and parked:
                     is_parked = True
-                    print('got parked')
                 elif i == IDX_BRAKE and is_braking:
                     is_active = True
                 elif i == IDX_LEFT and is_turning and is_left:
@@ -479,7 +477,6 @@ def insert_vehicle(asset_name, location, rotation, signal, parked, direction, bl
                         # If active, set to 10.0 (high for bloom/glow), otherwise 0.0
                         principled.inputs['Emission Strength'].default_value = 1.0
                     elif principled and is_parked:
-                        print('set parked')
                         principled.inputs['Base Color'].default_value = car_mats["parked"]
 
             if not is_parked:

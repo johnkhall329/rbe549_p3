@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import os
+import glob
 
 from hmr2.configs import CACHE_DIR_4DHUMANS
 from hmr2.models import HMR2, download_models, load_hmr2, DEFAULT_CHECKPOINT
@@ -9,12 +10,16 @@ from hmr2.datasets.vitdet_dataset import ViTDetDataset, DEFAULT_MEAN, DEFAULT_ST
 from hmr2.utils.renderer import Renderer, cam_crop_to_full
 
 class HumanDetector():
-    def __init__(self):
+    def __init__(self, scene_name):
         download_models(CACHE_DIR_4DHUMANS)
         self.hmr2, self.hmr2_cfg = load_hmr2()
         self.hmr2.eval()
         self.hmr2_renderer = Renderer(self.hmr2_cfg, self.hmr2.smpl.faces)
-        os.makedirs("./Output/humans", exist_ok=True)
+        os.makedirs(f"./Output/{scene_name}/humans", exist_ok=True)
+
+        human_objs = glob.glob("./Output/humans/*.obj") # clear previous run of human predictions
+        for obj_file in human_objs:
+            if os.path.isfile(obj_file) or os.path.islink(obj_file): os.remove(obj_file)
 
     def detect_humans(self, image, box):
             dataset = ViTDetDataset(self.hmr2_cfg, image, box[None,:].numpy())

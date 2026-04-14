@@ -26,7 +26,8 @@ CLASS_NAMES = [
 COLORS = np.random.uniform(0, 255, size=(len(CLASS_NAMES), 3))
 
 class LaneDetector():
-    def __init__(self, device=None):
+    def __init__(self, scene_name, device=None):
+        self.scene_name = scene_name
         self.transform = transforms.Compose([
             transforms.ToTensor()
         ])
@@ -55,10 +56,11 @@ class LaneDetector():
         self.max_blob_size = 500
         self.yellow_thresh = 135
 
-        os.makedirs('./Output/road_signs', exist_ok=True)
+        os.makedirs(f'./Output/{scene_name}/road_signs', exist_ok=True)
+        clear_road_signs(self.scene_name)
 
     def detect(self, image, K, extrinsics):
-        clear_road_signs()
+        # clear_road_signs()
         orig_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         h, w,_ = image.shape
         image = self.transform(orig_image.copy())
@@ -168,7 +170,8 @@ class LaneDetector():
                 warped_img = cv2.cvtColor(warped_img, cv2.COLOR_GRAY2BGRA)
                 warped_img[trans_idx[0], trans_idx[1], 3] = 0
 
-                save_name = f'./Output/road_signs/road_sign_{i}.png'
+                save_name = f'./Output/{self.scene_name}/road_signs/road_sign_{i}.png'
+                print(save_name)
                 cv2.imwrite(save_name, warped_img)
                 patch_info = {'type': 'road-sign-line', 'box': box_3d.tolist(), 'file_loc': save_name}
                 results.append(patch_info)
@@ -411,7 +414,7 @@ def ransac_curve(world_points, max_iter = 100, threshold = 0.15, early_exit = 0.
     
     return None, [], True
 
-def clear_road_signs():
-    road_imgs = glob.glob("./Output/road_signs/*") # clear previous run of human predictions
+def clear_road_signs(scene_name):
+    road_imgs = glob.glob(f"./Output/{scene_name}/road_signs/*") # clear previous run of human predictions
     for img_file in road_imgs:
         if os.path.isfile(img_file) or os.path.islink(img_file): os.remove(img_file)

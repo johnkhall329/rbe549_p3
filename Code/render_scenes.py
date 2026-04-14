@@ -132,7 +132,11 @@ def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
     parser.add_argument('--json_path',default="./Output/",help="dataset path")
+<<<<<<< HEAD
     parser.add_argument('--sequence',default='Trimmed', help="Select which sequence to generate visuals for")
+=======
+    parser.add_argument('--sequence',default='trimmed', help="Select which sequence to generate visuals for")
+>>>>>>> 9c6d1a913865ae27839117464094dfbadc765cd1
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
     parser.add_argument('--headless', default=True)
