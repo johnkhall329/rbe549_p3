@@ -15,7 +15,7 @@ from parse_results import save_dino_results_to_json
 
 CLEAR = "clear\n"
 CLOSE = "close\n"
-FPS = 2
+FPS = 36
 
 def connect_to_blender(asset_path, args, host, port, retry_limit=10):
     attempt=0
@@ -67,6 +67,7 @@ def main(args):
     if isinstance(args.headless, str): args.headless = args.headless == "True"
 
     asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))
+    image_gen = get_images_from_scene(args)
         
     s = None
     process = None
@@ -76,15 +77,15 @@ def main(args):
 
         time.sleep(3)
 
-        fps = FPS
+        fps = FPS/args.stride
         fourcc = cv2.VideoWriter_fourcc(*'mp4v') # Codec for .mp4
         video_writer = None
 
         json_path_name = args.json_path + args.sequence + "/*.json"
         json_paths = glob(json_path_name)
 
-
-        for i in range(len(json_paths)):
+        for i, frames in enumerate(image_gen):
+            prev_frame, frame = frames
             # save to json
             # run blender to render scene from json        
             send_and_wait(s, CLEAR)
@@ -100,8 +101,9 @@ def main(args):
             bounded_h, bounded_w = bounded_bgr.shape[:2]
 
             blender_resized = cv2.resize(blender_frame, (bounded_w, bounded_h), interpolation=cv2.INTER_AREA)
+            frame_resized = cv2.resize(frame, (bounded_w, bounded_h), interpolation=cv2.INTER_AREA)
 
-            combined_im = np.concatenate([bounded_bgr, blender_resized], axis=1)
+            combined_im = np.concatenate([frame_resized, blender_resized], axis=1)
 
             if video_writer is None:
                 height, width, _ = combined_im.shape
@@ -132,7 +134,8 @@ def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
     parser.add_argument('--json_path',default="./Output/",help="dataset path")
-    parser.add_argument('--sequence',default='trimmed', help="Select which sequence to generate visuals for")
+    parser.add_argument('--sequence',default='scene2', help="Select which sequence to generate visuals for")
+    parser.add_argument('--stride', default=10, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
     parser.add_argument('--headless', default=True)

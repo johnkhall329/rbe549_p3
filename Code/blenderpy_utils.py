@@ -481,7 +481,6 @@ def insert_vehicle(asset_name, location, rotation, signal, parked, direction, bl
 
             if not is_parked:
                 arrow_asset = blender_assets["VehicleArrow"]["Arrow"]
-                print(arrow_asset)
                 arrow_obj = arrow_asset["model"]
                 new_arrow = bpy.data.objects.new(name=f"Instance_VehicleArrow/Arrow", object_data=arrow_obj.data.copy())
                 bpy.context.scene.collection.objects.link(new_arrow)
