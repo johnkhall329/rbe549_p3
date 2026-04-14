@@ -8,13 +8,10 @@ import socket
 import time
 import matplotlib.pyplot as plt
 import numpy as np
+import glob
 
 from parse_video import *
 from parse_results import save_dino_results_to_json
-from depth_predictor import DepthPredictor
-from object_detector import ObjectDetector, ObjectDetectorGroundedDINO
-from lane_detector import LaneDetector
-from flow_detection import FlowDetector
 
 CLEAR = "clear\n"
 CLOSE = "close\n"
@@ -68,40 +65,8 @@ def send_and_wait(sock, message):
 
 def main(args):
     if isinstance(args.headless, str): args.headless = args.headless == "True"
-    image_gen = get_images_from_scene(args)
 
-    # Camera Calib
-    K = np.load(os.path.join(args.data_path, 'Calib', 'calibration.npy'))
-    extrinsics = np.array([[0,0,1.0,0], # camera to world of front camera
-                            [-1.0,0,0,0], 
-                            [0,-1.0,0,1.25]]) 
-    pitch = 0.01
-    r = np.array([[1, 0, 0],[0, np.cos(pitch), -np.sin(pitch)],[0,np.sin(pitch), np.cos(pitch)]])
-    extrinsics[:3,:3] = extrinsics[:3,:3] @ r
-
-    # Initialize Models
-    depth_predictor = DepthPredictor()
-
-    object_detector = ObjectDetectorGroundedDINO(camera_calib=K, device='cpu')
-
-    lane_detector = LaneDetector(device='cpu')
-
-    flow_detector = FlowDetector(device='cpu')
-
-    os.makedirs("./Output", exist_ok=True)
     asset_path = os.path.abspath(os.path.join(args.data_path, "Assets/"))
-    # cmd = [os.path.expanduser("~")+args.blender_path, 
-    #        args.base_blender_scene, "-P", 
-    #        "Code/blender_py.py", "--",  asset_path]
-    # if args.headless: cmd.insert(1, '-b')
-    # process = subprocess.Popen(cmd)
-    
-    # s = connect_to_blender('127.0.0.1', 65432, 10)
-    # time.sleep(3)
-    # s = connect_to_blender(asset_path, args, '127.0.0.1', 65432, 10)
-    # time.sleep(1)
-    # s.sendall(CLEAR.encode('utf-8'))
-    # time.sleep(1)
         
     s = None
     process = None
@@ -110,58 +75,37 @@ def main(args):
         s, process = connect_to_blender(asset_path, args, '127.0.0.1', 65432, 10)
 
         time.sleep(3)
-        # time.sleep(1)
 
         fps = FPS
         fourcc = cv2.VideoWriter_fourcc(*'mp4v') # Codec for .mp4
         video_writer = None
 
-        for frame_i, frames in enumerate(image_gen):
-            prev_frame, frame = frames
+        json_path_name = args.json_path + args.sequence + "/*.json"
+        json_paths = glob(json_path_name)
 
-            object_results, annotated_img = object_detector.predict(frame)
-            depth_im = depth_predictor.predict(frame)
 
-            lanes_im, lane_results = lane_detector.detect(frame, K, extrinsics)
-
-            if prev_frame is not None:
-                motion, flow_im = flow_detector.predict([prev_frame, frame], save=True)
-            else:
-                motion = np.zeros((frame.shape[0], frame.shape[1], 2), dtype=np.float32)
-                flow_im = np.zeros_like(frame)
-
-            # save_yolo_results_to_json(object_results, depth_im, lane_results, args, K)
-            save_dino_results_to_json(frame, object_results, depth_im, lane_results, motion, args, K, extrinsics)
-
-            # plt.imsave(f'Output/output{frame_i}_bounded.jpg', annotated_img)
-            # plt.imsave(f'Output/output{frame_i}_gdino.jpg', dino_img)
-            # plt.imsave(f'Output/output{frame_i}_depth.jpg', depth_im)
-            # plt.imsave(f'Output/output{frame_i}_lanes.jpg', cv2.cvtColor(lanes, cv2.COLOR_BGR2RGB))
-            # cv2.imshow('frame', cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR))
-            # cv2.imshow('frame', frame)
-            # cv2.waitKey(1)
-            # do detections
-
+        for i in range(len(json_paths)):
             # save to json
             # run blender to render scene from json        
             send_and_wait(s, CLEAR)
-            send_and_wait(s, "load_new ./Code/temp_scene.json\n")
+            send_and_wait(s, f"load_new ./{args.json_path}/{args.sequence}/{i}_scene.json\n")
             send_and_wait(s, f"render ./Output/{args.sequence}\n")
 
             blender_frame = cv2.imread(f"./Output/{args.sequence}.png")
 
-            flow_bgr = cv2.cvtColor(flow_im, cv2.COLOR_RGB2BGR)
+            # flow_bgr = cv2.cvtColor(flow_im, cv2.COLOR_RGB2BGR)
 
-            bounded_bgr = cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR)
-            bounded_h, bounded_w = bounded_bgr.shape[:2]
+            # bounded_bgr = cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR)
+            # bounded_h, bounded_w = bounded_bgr.shape[:2]
 
-            blender_resized = cv2.resize(blender_frame, (bounded_w, bounded_h), interpolation=cv2.INTER_AREA)
+            # blender_resized = cv2.resize(blender_frame, (bounded_w, bounded_h), interpolation=cv2.INTER_AREA)
 
-            combined_im = np.concatenate([bounded_bgr, blender_resized, flow_bgr], axis=1)
+            # combined_im = np.concatenate([bounded_bgr, blender_resized, flow_bgr], axis=1)
+            combined_im = blender_frame
 
             if video_writer is None:
                 height, width, _ = combined_im.shape
-                video_writer = cv2.VideoWriter(f'Output/{args.sequence}.mp4', fourcc, fps, (width, height))
+                video_writer = cv2.VideoWriter(f'Output/{args.sequence}/{args.sequence}.mp4', fourcc, fps, (width, height))
 
             video_writer.write(combined_im)
 
@@ -187,8 +131,8 @@ def main(args):
 def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
+    parser.add_argument('--json_path',default="./Output/",help="dataset path")
     parser.add_argument('--sequence',default='Trimmed', help="Select which sequence to generate visuals for")
-    parser.add_argument('--stride', default=54, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
     parser.add_argument('--headless', default=True)

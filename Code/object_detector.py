@@ -148,7 +148,7 @@ class ObjectDetectorGroundedDINO():
         self.lisa_model.eval()
 
         # Orient Anything
-        self.orient_anything_model = OrientAnythingModel(device='cpu')
+        self.orient_anything_model = OrientAnythingModel(device=self.device)
         
         # Supplemental Car Detection
         self.yolo = YOLO("./Models/yolo26n.pt")
