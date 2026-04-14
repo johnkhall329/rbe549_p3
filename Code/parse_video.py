@@ -38,9 +38,9 @@ def get_images_from_scene(args):
                 if not ret:
                     break
 
-                if i % args.stride == 0:
+                if i % int(args.stride) == 0:
                     yield prev_frame, frame
-                elif (i + FRAMES_BACK) % args.stride == 0:
+                elif (i + FRAMES_BACK) % int(args.stride) == 0:
                     prev_frame = frame
                 
                 i += 1

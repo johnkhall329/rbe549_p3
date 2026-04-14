@@ -25,11 +25,11 @@ def main(args):
     # Initialize Models
     depth_predictor = DepthPredictor()
 
-    object_detector = ObjectDetectorGroundedDINO(camera_calib=K, scene_name=args.sequence, device='cpu')
+    object_detector = ObjectDetectorGroundedDINO(camera_calib=K, scene_name=args.sequence, device='cuda')
 
-    lane_detector = LaneDetector(scene_name=args.sequence, device='cpu')
+    lane_detector = LaneDetector(scene_name=args.sequence, device='cuda')
 
-    flow_detector = FlowDetector(device='cpu')
+    flow_detector = FlowDetector(device='cuda')
 
     os.makedirs(f"./Output/{args.sequence}", exist_ok=True)
 
