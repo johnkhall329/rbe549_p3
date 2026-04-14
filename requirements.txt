@@ -11,3 +11,13 @@ supervision
 RapidFuzz
 loguru
 h5py
+torch
+torchvision
+torchmetrics
+opencv-python
+numpy
+ImageIO
+pillow
+scipy
+scikit-image
+ultralytics
