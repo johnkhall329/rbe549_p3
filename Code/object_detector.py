@@ -246,8 +246,8 @@ class ObjectDetectorGroundedDINO():
         yolo_results = self.yolo(image)
         yolo_cars, yolo_conf = self.sort_yolo(yolo_results[0])
         for yolo_box, conf in zip(yolo_cars, yolo_conf):
+            overlap = False
             for dino_box, dino_label in zip(dino_result["boxes"], new_labels):
-                overlap = False
                 if dino_label in {"sedan", "hatchback", "suv", "pickup"}:
                     iou = torchvision.ops.box_iou(yolo_box, dino_box.detach().cpu()[None, :])
                     if iou > 0.25:

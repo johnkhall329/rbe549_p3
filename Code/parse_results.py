@@ -197,6 +197,7 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
             print('person')
  
         if "road sign" in label:
+            if not isinstance(detail, dict): continue
             sign_type = detail.get("type", None)
             if sign_type == 'stop':
                 label = 'stop'
