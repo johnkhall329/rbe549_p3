@@ -272,40 +272,43 @@ class ObjectDetectorGroundedDINO():
         # Segmentation
         self.sam2_predictor.set_image(image)
 
-        input_boxes = np.stack(new_boxes)
-        masks, scores, logits = self.sam2_predictor.predict(
-            point_coords=None,
-            point_labels=None,
-            box=input_boxes,
-            multimask_output=False,
-        )
+        if len(new_boxes) > 0:
+            input_boxes = np.stack(new_boxes)
+            masks, scores, logits = self.sam2_predictor.predict(
+                point_coords=None,
+                point_labels=None,
+                box=input_boxes,
+                multimask_output=False,
+            )
 
-        # comes out as (c, 1, h, w)
-        if len(masks.shape) > 3: masks = masks.squeeze(1)
+            # comes out as (c, 1, h, w)
+            if len(masks.shape) > 3: masks = masks.squeeze(1)
 
-        # Plotting
-        class_ids = np.array(list(range(len(new_labels))))
+            # Plotting
+            class_ids = np.array(list(range(len(new_labels))))
 
-        plot_labels = [
-            f"{class_name} {float(confidence):.2f}"
-            for class_name, confidence
-            in zip(new_labels, new_scores)
-        ]
+            plot_labels = [
+                f"{class_name} {float(confidence):.2f}"
+                for class_name, confidence
+                in zip(new_labels, new_scores)
+            ]
 
-        detections = sv.Detections(
-            xyxy=input_boxes,  # (n, 4)
-            mask=masks.astype(bool),  # (n, h, w)
-            class_id=class_ids
-        )
+            detections = sv.Detections(
+                xyxy=input_boxes,  # (n, 4)
+                mask=masks.astype(bool),  # (n, h, w)
+                class_id=class_ids
+            )
 
-        box_annotator = sv.BoxAnnotator(color=ColorPalette.from_hex(CUSTOM_COLOR_MAP))
-        annotated_frame = box_annotator.annotate(scene=dino_img, detections=detections)
+            box_annotator = sv.BoxAnnotator(color=ColorPalette.from_hex(CUSTOM_COLOR_MAP))
+            annotated_frame = box_annotator.annotate(scene=dino_img, detections=detections)
 
-        label_annotator = sv.LabelAnnotator(color=ColorPalette.from_hex(CUSTOM_COLOR_MAP))
-        annotated_frame = label_annotator.annotate(scene=annotated_frame, detections=detections, labels=plot_labels)
+            label_annotator = sv.LabelAnnotator(color=ColorPalette.from_hex(CUSTOM_COLOR_MAP))
+            annotated_frame = label_annotator.annotate(scene=annotated_frame, detections=detections, labels=plot_labels)
 
-        mask_annotator = sv.MaskAnnotator(color=ColorPalette.from_hex(CUSTOM_COLOR_MAP))
-        annotated_frame = mask_annotator.annotate(scene=annotated_frame, detections=detections)
+            mask_annotator = sv.MaskAnnotator(color=ColorPalette.from_hex(CUSTOM_COLOR_MAP))
+            annotated_frame = mask_annotator.annotate(scene=annotated_frame, detections=detections)
+        else:
+            masks = []
 
         dino_result["masks"] = list(masks)
         dino_result["details"] = details
