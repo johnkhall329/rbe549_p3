@@ -89,19 +89,19 @@ def main(args):
             # run blender to render scene from json        
             send_and_wait(s, CLEAR)
             send_and_wait(s, f"load_new ./{args.json_path}/{args.sequence}/{i}_scene.json\n")
-            send_and_wait(s, f"render ./Output/{args.sequence}\n")
+            send_and_wait(s, f"render ./Output/{args.sequence}/{i}_scene\n")
 
-            blender_frame = cv2.imread(f"./Output/{args.sequence}.png")
+            blender_frame = cv2.imread(f"./Output/{args.sequence}/{i}_scene.png")
 
             # flow_bgr = cv2.cvtColor(flow_im, cv2.COLOR_RGB2BGR)
 
-            # bounded_bgr = cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR)
-            # bounded_h, bounded_w = bounded_bgr.shape[:2]
+            annotated_img = cv2.imread(f"./Output/{args.sequence}/{i}_bounded.jpg")
+            bounded_bgr = cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR)
+            bounded_h, bounded_w = bounded_bgr.shape[:2]
 
-            # blender_resized = cv2.resize(blender_frame, (bounded_w, bounded_h), interpolation=cv2.INTER_AREA)
+            blender_resized = cv2.resize(blender_frame, (bounded_w, bounded_h), interpolation=cv2.INTER_AREA)
 
-            # combined_im = np.concatenate([bounded_bgr, blender_resized, flow_bgr], axis=1)
-            combined_im = blender_frame
+            combined_im = np.concatenate([bounded_bgr, blender_resized], axis=1)
 
             if video_writer is None:
                 height, width, _ = combined_im.shape

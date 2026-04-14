@@ -52,7 +52,7 @@ def main(args):
         with open(f"./Output/{args.sequence}/{frame_i}_scene.json", "w") as f:
             json.dump(scene_objects, f, indent=4)
 
-        # plt.imsave(f'Output/output{frame_i}_bounded.jpg', annotated_img)
+        plt.imsave(f'Output/{args.sequence}/{frame_i}_bounded.jpg', annotated_img)
         # plt.imsave(f'Output/output{frame_i}_gdino.jpg', dino_img)
         # plt.imsave(f'Output/output{frame_i}_depth.jpg', depth_im)
         # plt.imsave(f'Output/output{frame_i}_lanes.jpg', cv2.cvtColor(lanes, cv2.COLOR_BGR2RGB))
