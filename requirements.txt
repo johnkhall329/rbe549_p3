@@ -14,7 +14,7 @@ h5py
 torch
 torchvision
 torchmetrics
-opencv
+opencv-python
 numpy
 ImageIO
 pillow
