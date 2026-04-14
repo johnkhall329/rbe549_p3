@@ -14,7 +14,8 @@ module load cuda/12.4.0/3mdaov5
 python3 -m venv pytorch_venv
 source pytorch_venv/bin/activate
 pip3 install -r requirements.txt
-pip3 install -e Modules/4D-Humans/.
-pip3 install -e Grounded-SAM-2/.
+#pip3 install -e Modules/4D-Humans/.
+#pip3 install -e Modules/Grounded-SAM-2/.
+pip3 list
 
-python3 Code/generate_scenes.py --run_name $RUN_NAME
+python3 Code/generate_scenes.py --sequence $RUN_NAME

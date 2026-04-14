@@ -11,7 +11,7 @@ supervision
 RapidFuzz
 loguru
 h5py
-torch
+torch<=2.4
 torchvision
 torchmetrics
 opencv-python
@@ -21,3 +21,4 @@ pillow
 scipy
 scikit-image
 ultralytics
+onnxruntime-gpu
