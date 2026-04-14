@@ -110,7 +110,7 @@ class ObjectDetector():
     
 
 class ObjectDetectorGroundedDINO():
-    def __init__(self, camera_calib, device="cpu"):
+    def __init__(self, camera_calib, scene_name, device="cpu"):
 
         self.device = device
         self.K = camera_calib
@@ -139,7 +139,7 @@ class ObjectDetectorGroundedDINO():
         self.processor = AutoProcessor.from_pretrained(dino_model_id)
         self.grounded_dino_model = AutoModelForZeroShotObjectDetection.from_pretrained(dino_model_id).to(self.device)
 
-        self.human_detector = HumanDetector()
+        self.human_detector = HumanDetector(scene_name)
 
         self.reader = easyocr.Reader(['en'])
 
@@ -185,9 +185,7 @@ class ObjectDetectorGroundedDINO():
     #     return dino_result["labels"][0]
 
     def predict(self, image, format="BGR"):
-        human_objs = glob.glob("./Output/humans/*.obj") # clear previous run of human predictions
-        for obj_file in human_objs:
-            if os.path.isfile(obj_file) or os.path.islink(obj_file): os.remove(obj_file)
+        
 
         if format == "BGR":
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
