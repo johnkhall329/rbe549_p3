@@ -44,7 +44,7 @@ LABEL_MAP_DINO = {
 }
 
 
-def save_dino_results_to_json(image, object_detection_results, depth_results, lane_results, motion_results, args, K, extrinsics, frame_num):
+def save_dino_results_to_json(image, object_detection_results, depth_results, lane_results, motion_results, args, K, extrinsics):
     scene_objects = {}
     im_h, im_w = image.shape[:2]
 
@@ -342,8 +342,7 @@ def save_dino_results_to_json(image, object_detection_results, depth_results, la
     with open("Code/temp_scene.json", "w") as f:
         json.dump(scene_objects, f, indent=4)
 
-    with open(f"Code/temp_scene_{frame_num}.json", "w") as f:
-        json.dump(scene_objects, f, indent=4)
+    return scene_objects
 
 
 def locate_3D_point(depth, u, v, K, extrinsics):
