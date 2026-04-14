@@ -17,4 +17,4 @@ pip3 install -r requirements.txt
 pip3 install -e Modules/4D-Humans/.
 pip3 install -e Grounded-SAM-2/.
 
-python3 Phase2/Wrapper.py --run_name $RUN_NAME
+python3 Code/generate_scenes.py --run_name $RUN_NAME
