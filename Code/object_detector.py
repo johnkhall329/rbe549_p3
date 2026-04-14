@@ -141,7 +141,7 @@ class ObjectDetectorGroundedDINO():
 
         self.human_detector = HumanDetector(scene_name)
 
-        self.reader = easyocr.Reader(['en'], model_storage_directory="./Models")
+        self.reader = easyocr.Reader(['en'], model_storage_directory="./Models", user_network_directory="./Models")
 
         # lisa_path = os.path.join(model_dir, 'last.pt')
         self.lisa_model = YOLO("./Models/last.pt")
