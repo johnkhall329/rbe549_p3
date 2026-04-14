@@ -25,15 +25,9 @@ def main(args):
     # Initialize Models
     depth_predictor = DepthPredictor()
 
-<<<<<<< HEAD
-    object_detector = ObjectDetectorGroundedDINO(camera_calib=K, device='cpu')
-
-    lane_detector = LaneDetector(device='cpu')
-=======
     object_detector = ObjectDetectorGroundedDINO(camera_calib=K, scene_name=args.sequence, device='cpu')
 
     lane_detector = LaneDetector(scene_name=args.sequence, device='cpu')
->>>>>>> 9c6d1a913865ae27839117464094dfbadc765cd1
 
     flow_detector = FlowDetector(device='cpu')
 
@@ -72,11 +66,7 @@ def main(args):
 def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
-<<<<<<< HEAD
-    parser.add_argument('--sequence',default='Trimmed', help="Select which sequence to generate visuals for")
-=======
     parser.add_argument('--sequence',default='trimmed', help="Select which sequence to generate visuals for")
->>>>>>> 9c6d1a913865ae27839117464094dfbadc765cd1
     parser.add_argument('--stride', default=54, help="How many frames to skip in video")
     return parser
 
