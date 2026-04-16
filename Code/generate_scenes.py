@@ -25,11 +25,11 @@ def main(args):
     # Initialize Models
     depth_predictor = DepthPredictor()
 
-    object_detector = ObjectDetectorGroundedDINO(camera_calib=K, scene_name=args.sequence, device='cuda')
+    object_detector = ObjectDetectorGroundedDINO(camera_calib=K, scene_name=args.sequence, device='cpu')
 
-    lane_detector = LaneDetector(scene_name=args.sequence, device='cuda')
+    lane_detector = LaneDetector(scene_name=args.sequence, device='cpu')
 
-    flow_detector = FlowDetector(device='cuda')
+    flow_detector = FlowDetector(device='cpu')
 
     os.makedirs(f"./Output/{args.sequence}", exist_ok=True)
 
@@ -53,9 +53,10 @@ def main(args):
             json.dump(scene_objects, f, indent=4)
 
         plt.imsave(f'Output/{args.sequence}/{frame_i}_bounded.jpg', annotated_img)
-        # plt.imsave(f'Output/output{frame_i}_gdino.jpg', dino_img)
-        # plt.imsave(f'Output/output{frame_i}_depth.jpg', depth_im)
-        # plt.imsave(f'Output/output{frame_i}_lanes.jpg', cv2.cvtColor(lanes, cv2.COLOR_BGR2RGB))
+        plt.imsave(f'Output/{args.sequence}/output{frame_i}_gdino.jpg', annotated_img)
+        plt.imsave(f'Output/{args.sequence}/output{frame_i}_depth.jpg', depth_im)
+        plt.imsave(f'Output/{args.sequence}/output{frame_i}_lanes.jpg', cv2.cvtColor(lanes_im, cv2.COLOR_BGR2RGB))
+        plt.imsave(f'Output/{args.sequence}/output{frame_i}_flow.jpg', flow_im)
         # cv2.imshow('frame', cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR))
         # cv2.imshow('frame', frame)
         # cv2.waitKey(1)
@@ -67,7 +68,7 @@ def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
     parser.add_argument('--sequence',default='trimmed', help="Select which sequence to generate visuals for")
-    parser.add_argument('--stride', default=54, help="How many frames to skip in video")
+    parser.add_argument('--stride', default=1575, help="How many frames to skip in video")
     return parser
 
 if __name__ == "__main__":
