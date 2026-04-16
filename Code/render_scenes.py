@@ -96,9 +96,9 @@ def main(args):
 
             # flow_bgr = cv2.cvtColor(flow_im, cv2.COLOR_RGB2BGR)
 
-            annotated_img = cv2.imread(f"./Output/{args.sequence}/{i}_bounded.jpg")
-            bounded_bgr = cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR)
-            bounded_h, bounded_w = bounded_bgr.shape[:2]
+            # annotated_img = cv2.imread(f"./Output/{args.sequence}/{i}_bounded.jpg")
+            # bounded_bgr = cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR)
+            bounded_h, bounded_w = frame.shape[:2]
 
             blender_resized = cv2.resize(blender_frame, (bounded_w, bounded_h), interpolation=cv2.INTER_AREA)
             frame_resized = cv2.resize(frame, (bounded_w, bounded_h), interpolation=cv2.INTER_AREA)
@@ -134,8 +134,8 @@ def configParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',default="./P3Data/",help="dataset path")
     parser.add_argument('--json_path',default="./Output/",help="dataset path")
-    parser.add_argument('--sequence',default='scene2', help="Select which sequence to generate visuals for")
-    parser.add_argument('--stride', default=10, help="How many frames to skip in video")
+    parser.add_argument('--sequence',default='scene6', help="Select which sequence to generate visuals for")
+    parser.add_argument('--stride', default=5, help="How many frames to skip in video")
     parser.add_argument('--blender_path', default="/Downloads/blender-5.1.0-linux-x64/blender")
     parser.add_argument('--base_blender_scene', default="./Blender/road_scene.blend")
     parser.add_argument('--headless', default=True)
